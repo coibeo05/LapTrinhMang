@@ -154,10 +154,7 @@ button.pick{border-color:#e9d4af}button.pick:hover{border-color:#dd9b4b;backgrou
 .qe-media audio{width:100%}.qe-prev{max-width:220px;max-height:150px;border-radius:8px}
 
 #chatLog{height:120px;overflow:auto;border:1px solid #ccc;border-radius:6px;padding:6px;margin:8px 0;text-align:left}
-
-/* ---- Auth & Profile Styling ---- */
-.auth-card{max-width:440px;margin:30px auto;text-align:left}
-.actions.vertical{flex-direction:column;gap:12px;margin-top:16px}
+n;gap:12px;margin-top:16px}
 .btn-primary{background:#2e5597;color:#fff;font-weight:bold;width:100%}
 .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:6px;padding:10px;font-size:15px;font-weight:500;width:100%;cursor:pointer;transition:background-color .2s}
 .btn-google:hover{background:#f8f9fa;border-color:#c2c4c7}
