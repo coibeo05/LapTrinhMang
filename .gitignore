@@ -1,0 +1,16 @@
+# VS Code
+.vscode/
+
+# Maven
+target/
+*.class
+
+# Java
+*.log
+
+# IDE
+.idea/
+*.iml
+
+# Environment / configuration
+.env

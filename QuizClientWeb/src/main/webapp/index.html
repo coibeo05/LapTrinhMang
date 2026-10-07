@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Game Quiz - Vòng chơi</title>
+<link rel="stylesheet" href="css/style.css?v=6">
+</head>
+<body>
+<header>
+  <span id="conn" class="dot" title="Trạng thái kết nối"></span><b>Game Quiz</b>
+  <span id="userInfo" style="margin-left:12px;color:#cbd5e1;font-size:0.9em"></span>
+  <span id="score"></span>
+  <button id="btnLeave" class="danger hidden">Thoát Trận</button>
+  <div id="userAvatarContainer" class="avatar-wrap hidden" title="Hồ sơ tài khoản">
+    <div id="userAvatar" class="avatar-circle">?</div>
+  </div>
+</header>
+<main>
+  <section id="login" class="screen auth-card">
+    <h1>Đăng Nhập</h1>
+    <label>Tên đăng nhập <input type="text" id="userName" maxlength="30" placeholder="Nhập tên đăng nhập"></label>
+    <label>Mật khẩu <input type="password" id="userPass" maxlength="50" placeholder="Nhập mật khẩu"></label>
+    <div class="actions vertical">
+      <button id="btnLogin" class="btn-primary">Đăng nhập</button>
+      <button id="btnGoogleLogin" class="btn-google" type="button">
+        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+        Đăng nhập bằng tài khoản Google
+      </button>
+    </div>
+    <div class="auth-switch">
+      <span>Chưa có tài khoản?</span>
+      <button id="btnSwitchRegister" class="link-btn" type="button">Đăng ký ngay</button>
+    </div>
+  </section>
+
+  <section id="register" class="screen auth-card hidden">
+    <h1>Đăng Ký Tài Khoản</h1>
+    <label>Tên đăng nhập <input type="text" id="regUserName" maxlength="30" placeholder="Chọn tên đăng nhập (3-30 ký tự)"></label>
+    <label>Mật khẩu <input type="password" id="regUserPass" maxlength="50" placeholder="Mật khẩu (tối thiểu 4 ký tự)"></label>
+    <label>Nhập lại mật khẩu <input type="password" id="regUserPassConfirm" maxlength="50" placeholder="Nhập lại mật khẩu"></label>
+    <div class="actions">
+      <button id="btnDoRegister" class="btn-primary">Tạo tài khoản</button>
+      <button id="btnBackToLogin" class="alt" type="button">Quay lại</button>
+    </div>
+    <div class="auth-switch">
+      <span>Đã có tài khoản?</span>
+      <button id="btnSwitchLogin" class="link-btn" type="button">Đăng nhập</button>
+    </div>
+  </section>
+
+  <section id="home" class="screen hidden">
+    <h1>Game Quiz</h1>
+    <div class="actions">
+      <button id="btnNewRoom">Tạo phòng</button>
+      <button id="btnNewSet" class="alt">Tạo kho câu hỏi</button>
+      <button id="btnRefresh" class="alt">Làm mới</button>
+    </div>
+    <div class="actions">
+      <input type="text" id="joinCode" maxlength="6" placeholder="Nhập mã phòng" style="text-transform:uppercase">
+      <button id="btnJoinCode">Vào bằng mã</button>
+    </div>
+    <h2>Phòng đang mở</h2>
+    <div id="roomList"></div>
+    <h2>Các bộ câu hỏi hiện có</h2>
+    <div id="setList"></div>
+  </section>
+
+  <section id="createSet" class="screen editor hidden">
+    <div class="qe-top">
+      <button id="btnSaveSet" class="qe-done">Xong</button>
+      <input type="text" id="setName" class="qe-name" maxlength="60" placeholder="Tên bộ câu hỏi (ví dụ: Ôn tập Lập trình mạng)">
+      <button id="btnCancelSet" class="qe-cancel">Hủy</button>
+    </div>
+    <div class="qe-main" id="qeMain"></div>
+    <div class="qe-strip">
+      <div id="slides"></div>
+      <span class="lbl">Thêm câu →</span>
+      <button id="btnAddSlide" class="qe-plus" title="Thêm câu">+</button>
+    </div>
+  </section>
+
+  <section id="createRoom" class="screen hidden">
+    <h2>Tạo phòng</h2>
+    <label>Tên phòng <input type="text" id="roomName" maxlength="40" value="Phòng của tôi"></label>
+    <label>Bộ câu hỏi <select id="roomSet"></select></label>
+    <label>Số câu hỏi <input type="number" id="roomCount" min="1" value="5"></label>
+    <label><input type="checkbox" id="roomHidden"> Ẩn phòng (chỉ vào được bằng mã)</label>
+    <p class="hint">Cần ít nhất 2 người chơi để bắt đầu trận (có thể thêm bot ở phòng chờ).</p>
+    <div class="actions">
+      <button id="btnCreateRoom">Tạo phòng</button>
+      <button id="btnCancelRoom" class="alt">Hủy</button>
+    </div>
+  </section>
+
+  <section id="waiting" class="screen hidden">
+    <h2 id="roomTitle"></h2>
+    <p id="roomInfo"></p>
+    <h3>Người chơi trong phòng</h3>
+    <ul id="playerList"></ul>
+    <div id="chatLog"></div>
+    <div class="actions"><input type="text" id="chatIn" maxlength="200" placeholder="Nhắn tin trong phòng..."><button id="btnChat" class="alt">Gửi</button></div>
+    <div class="actions">
+      <button id="btnAddBot" class="alt">Thêm bot</button>
+      <button id="btnStart">Bắt đầu</button>
+      <button id="btnLeaveRoom" class="alt">Rời phòng</button>
+    </div>
+  </section>
+
+  <section id="intro" class="screen hidden">
+    <h2 id="introTitle"></h2>
+    <p id="introText"></p>
+    <div id="introCount"></div>
+  </section>
+
+  <section id="question" class="screen hidden">
+    <div class="bar"><div id="barFill"></div></div>
+    <div class="row"><span id="qMeta"></span><span id="timeLeft"></span></div>
+    <h2 id="qText"></h2>
+    <div id="qMedia"></div>
+    <div id="qBody"></div>
+    <div id="qFeedback"></div>
+    <button id="btnSubmit">Gửi</button>
+  </section>
+
+  <section id="ranking" class="screen hidden">
+    <h2>Bảng xếp hạng tạm thời</h2>
+    <table id="rankTable"></table>
+  </section>
+
+  <section id="end" class="screen hidden">
+    <h2 id="endTitle"></h2>
+    <p id="endText"></p>
+    <table id="finalTable"></table>
+    <button id="btnHome">Về màn hình chính</button>
+  </section>
+</main>
+
+<div id="profileModal" class="overlay hidden">
+  <div class="box profile-box">
+    <div class="profile-header">
+      <div class="profile-avatar-large" id="modalAvatar">?</div>
+      <div class="profile-title">
+        <h3 id="modalUsername" style="margin:0 0 4px 0">Tên tài khoản</h3>
+        <span id="modalAccountMeta" class="profile-meta">ID: 0</span>
+      </div>
+      <button id="btnCloseProfile" class="close-x" type="button" title="Đóng">&times;</button>
+    </div>
+    <div class="profile-tabs">
+      <button class="ptab active" data-tab="tabInfo" type="button">Thông tin</button>
+      <button class="ptab" data-tab="tabHistory" type="button">Lịch sử đấu</button>
+      <button class="ptab" data-tab="tabEdit" type="button">Sửa thông tin</button>
+    </div>
+    <div class="profile-content">
+      <div id="tabInfo" class="ptab-pane">
+        <div class="stat-grid">
+          <div class="stat-card"><span class="stat-val" id="infoScore">0</span><span class="stat-lbl">Điểm tích lũy</span></div>
+          <div class="stat-card"><span class="stat-val" id="infoWins">0</span><span class="stat-lbl">Trận thắng</span></div>
+          <div class="stat-card"><span class="stat-val" id="infoMatches">0</span><span class="stat-lbl">Số trận</span></div>
+          <div class="stat-card"><span class="stat-val" id="infoWinRate">0%</span><span class="stat-lbl">Tỷ lệ thắng</span></div>
+        </div>
+        <p class="profile-joined">Ngày tạo: <b id="infoJoined">-</b></p>
+      </div>
+      <div id="tabHistory" class="ptab-pane hidden">
+        <div id="historyList" class="history-list">
+          <p class="hint" style="text-align:center">Đang tải lịch sử đấu...</p>
+        </div>
+      </div>
+      <div id="tabEdit" class="ptab-pane hidden">
+        <h4 style="margin:0 0 10px 0">Đổi mật khẩu</h4>
+        <label>Mật khẩu hiện tại <input type="password" id="oldPass" placeholder="Nhập mật khẩu hiện tại"></label>
+        <label>Mật khẩu mới <input type="password" id="newPass" placeholder="Mật khẩu mới (tối thiểu 4 ký tự)"></label>
+        <label>Nhập lại mật khẩu mới <input type="password" id="newPassConfirm" placeholder="Xác nhận mật khẩu mới"></label>
+        <div class="actions">
+          <button id="btnSavePassword" class="btn-primary" type="button">Lưu mật khẩu mới</button>
+        </div>
+      </div>
+    </div>
+    <div class="profile-footer">
+      <button id="btnLogout" class="danger" type="button">Đăng xuất</button>
+    </div>
+  </div>
+</div>
+
+<div id="confirm" class="overlay hidden">
+  <div class="box">
+    <p>Bạn có chắc chắn muốn thoát trận?</p>
+    <button id="btnYes" class="danger">Xác nhận</button>
+    <button id="btnNo">Ở lại</button>
+  </div>
+</div>
+<div id="typePicker" class="overlay hidden">
+  <div class="box picker">
+    <h3 style="margin:0">Chọn dạng câu hỏi</h3>
+    <div id="pickGrid"></div>
+    <button id="btnClosePicker" class="alt">Đóng</button>
+  </div>
+</div>
+<div id="toast" class="hidden"></div>
+<script src="js/app.js?v=6"></script>
+</body>
+</html>
