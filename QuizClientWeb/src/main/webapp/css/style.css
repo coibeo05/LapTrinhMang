@@ -154,7 +154,10 @@ button.pick{border-color:#e9d4af}button.pick:hover{border-color:#dd9b4b;backgrou
 .qe-media audio{width:100%}.qe-prev{max-width:220px;max-height:150px;border-radius:8px}
 
 #chatLog{height:120px;overflow:auto;border:1px solid #ccc;border-radius:6px;padding:6px;margin:8px 0;text-align:left}
-n;gap:12px;margin-top:16px}
+
+/* ---- Auth & Profile Styling ---- */
+.auth-card{max-width:440px;margin:30px auto;text-align:left}
+.actions.vertical{flex-direction:column;gap:12px;margin-top:16px}
 .btn-primary{background:#2e5597;color:#fff;font-weight:bold;width:100%}
 .btn-google{display:flex;align-items:center;justify-content:center;gap:10px;background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:6px;padding:10px;font-size:15px;font-weight:500;width:100%;cursor:pointer;transition:background-color .2s}
 .btn-google:hover{background:#f8f9fa;border-color:#c2c4c7}
@@ -194,3 +197,28 @@ n;gap:12px;margin-top:16px}
 .history-rank.top1{color:#dd9b4b}
 .history-pts{font-size:13px;color:#27ae60;font-weight:bold}
 .profile-footer{margin-top:16px;padding-top:12px;border-top:1px solid #eee;display:flex;justify-content:flex-end}
+
+/* ---- Giao diện đăng nhập / đăng ký (nâu - kem) ---- */
+.btn-primary{background:#a74713}.btn-primary:hover:not(:disabled){background:#8f3b0e}
+.auth-card{max-width:420px;margin:48px auto;padding:36px 32px 28px;text-align:left;border-radius:20px;box-shadow:0 12px 40px rgba(68,43,21,.14)}
+.auth-logo-img{display:block;width:190px;max-width:70%;height:auto;margin:0 auto 6px}
+.auth-card h1{margin:0;text-align:center;font-size:26px;color:#442b15}
+.auth-sub{margin:6px 0 22px;text-align:center;color:#8a7358;font-size:14px}
+.auth-card label{margin:14px 0 0;font-size:13px;color:#5a3d24}
+.auth-card label input[type=text],.auth-card label input[type=password]{margin-top:6px;height:46px;padding:0 14px;font-size:15px;font-weight:normal;color:#3a2a1a;background:#fff;border:2px solid #eadfce;border-radius:12px;transition:border-color .15s,box-shadow .15s}
+.auth-card label input::placeholder{color:#b9a88f}
+.auth-card label input:focus{outline:0;border-color:#dd9b4b;box-shadow:0 0 0 4px rgba(221,155,75,.22)}
+.auth-card .actions.vertical{margin:22px 0 0;gap:12px}
+.auth-card .btn-primary{height:48px;font-size:16px;font-weight:bold;border-radius:12px;box-shadow:0 4px 12px rgba(167,71,19,.28)}
+.auth-divider{display:flex;align-items:center;gap:12px;color:#a8977e;font-size:13px}
+.auth-divider::before,.auth-divider::after{content:"";flex:1;height:1px;background:#eadfce}
+.auth-card .btn-google{height:48px;border-radius:12px;background:#fff;color:#3c4043;border:2px solid #eadfce;font-size:15px;font-weight:600}
+.auth-card .btn-google:hover{background:#fbf6ea;border-color:#dd9b4b}
+.auth-switch{margin-top:22px;text-align:center;font-size:14px;color:#8a7358}
+.auth-card .link-btn{background:transparent;padding:0 0 0 4px;font-size:14px;font-weight:bold;color:#a74713;border-radius:0;text-decoration:underline}
+.auth-card .link-btn:hover:not(:disabled){background:transparent;color:#8f3b0e}
+@media(max-width:480px){.auth-card{margin:20px auto;padding:28px 20px 22px}}
+
+/* ---- Logo ở header và màn hình chính ---- */
+.brand-logo{height:34px;width:auto;display:block;filter:drop-shadow(0 0 1px #fdf3dc) drop-shadow(0 0 2px rgba(253,243,220,.85))}
+.home-logo{display:block;width:170px;max-width:60%;height:auto;margin:0 auto 6px}
