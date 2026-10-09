@@ -87,6 +87,13 @@ public class DatabaseManager {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """);
 
+            // Liên kết đăng nhập Google. Bỏ qua nếu cột đã có (mã lỗi MySQL 1060).
+            try {
+                st.execute("ALTER TABLE `Account` ADD COLUMN `googleSub` VARCHAR(40) NULL UNIQUE");
+            } catch (SQLException e) {
+                if (e.getErrorCode() != 1060) throw e;
+            }
+
             // Bảng 2: Question
             st.execute("""
                 CREATE TABLE IF NOT EXISTS `Question` (

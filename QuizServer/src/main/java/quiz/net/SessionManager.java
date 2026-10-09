@@ -45,7 +45,7 @@ public class SessionManager {
     public static Session removeSession(int sessionId) {
         Session s = SESSIONS.remove(sessionId);
         if (s != null && s.getAccount() != null) {
-            ACCOUNT_TO_SESSION.remove(s.getAccount().getAccountId());
+            ACCOUNT_TO_SESSION.remove(s.getAccount().getAccountId(), sessionId);
             s.getAccount().setOnline(false);
         }
         return s;
@@ -82,4 +82,3 @@ public class SessionManager {
         }
     }
 }
-

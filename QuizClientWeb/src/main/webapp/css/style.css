@@ -222,3 +222,6 @@ button.pick{border-color:#e9d4af}button.pick:hover{border-color:#dd9b4b;backgrou
 /* ---- Logo ở header và màn hình chính ---- */
 .brand-logo{height:34px;width:auto;display:block;filter:drop-shadow(0 0 1px #fdf3dc) drop-shadow(0 0 2px rgba(253,243,220,.85))}
 .home-logo{display:block;width:170px;max-width:60%;height:auto;margin:0 auto 6px}
+/* ---- Nút Google: nút chính thức của Google đặt trong suốt đè lên nút đã thiết kế ---- */
+.gsi-wrap{position:relative}
+.gsi-wrap #gsiBtn{position:absolute;top:0;left:0;width:100%;height:40px;overflow:hidden;opacity:.01;z-index:2;transform-origin:0 0}

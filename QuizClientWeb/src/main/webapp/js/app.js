@@ -531,13 +531,24 @@ $('btnSwitchRegister').onclick = () => show('register');
 $('btnSwitchLogin').onclick = () => show('login');
 $('btnBackToLogin').onclick = () => show('login');
 
-$('btnGoogleLogin').onclick = () => {
-  const email = prompt('Đăng nhập bằng Google:\nNhập địa chỉ Email Google của bạn:', 'player@gmail.com');
-  if (email && email.trim()) {
-    const name = email.split('@')[0];
-    send('GOOGLE_LOGIN', { email: email.trim(), name: name });
-  }
-};
+// Đăng nhập Google: Google trả ID token (JWT) -> gửi cho Server tự xác minh (GoogleTokenVerifier).
+// Client ID không phải bí mật, nhưng PHẢI trùng Client ID ở Server và đã khai báo origin http://localhost:8081 trên Google Cloud.
+// Nút chính thức của Google được đặt trong suốt đè lên nút "Tiếp tục với Google" để giữ giao diện của nhóm.
+const GOOGLE_CLIENT_ID = '360362842720-ge5oh5ptjin31t0k9vvp8jd1124ti3os.apps.googleusercontent.com';
+function initGoogle() {
+  if (!window.google || !google.accounts || !google.accounts.id) return false;
+  const btn = $('btnGoogleLogin'), box = $('gsiBtn');
+  google.accounts.id.initialize({
+    client_id: GOOGLE_CLIENT_ID,
+    callback: r => send('GOOGLE_LOGIN', { idToken: r.credential })
+  });
+  google.accounts.id.renderButton(box, { theme: 'outline', size: 'large', width: Math.min(400, Math.max(200, btn.offsetWidth || 300)) });
+  if (btn.offsetHeight) box.style.transform = 'scaleY(' + (btn.offsetHeight / 40) + ')';   // phủ kín chiều cao nút
+  return true;
+}
+$('btnGoogleLogin').onclick = () => toast('Chưa tải được Google, hãy kiểm tra kết nối mạng');   // chỉ chạy khi nút Google chưa nạp
+let gTries = 0;
+const gTimer = setInterval(() => { if (initGoogle() || ++gTries > 50) clearInterval(gTimer); }, 200);
 
 // Avatar & Profile Modal
 $('userAvatarContainer').onclick = () => {

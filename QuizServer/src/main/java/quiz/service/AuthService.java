@@ -13,11 +13,13 @@ import quiz.model.Session;
 import quiz.net.SessionManager;
 import quiz.util.PasswordUtil;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Xử lý nghiệp vụ Xác thực, Tài khoản, Lịch sử đấu và Hồ sơ người chơi (Mục 1.1.2, 1.1.3, 4.1 Hình 3).
  */
 public class AuthService {
+    private static final GoogleTokenVerifier GOOGLE = GoogleTokenVerifier.createDefault();
     private final AccountDAO accountDAO;
     private final MatchResultDAO matchResultDAO;
 
@@ -79,20 +81,14 @@ public class AuthService {
 
         Account acc = accountDAO.findByUsername(username);
 
-        if (!password.isEmpty()) {
-            if (acc == null || !PasswordUtil.verify(password, acc.getPasswordHash())) {
-                return fail("LOGIN_FAIL", "Sai tên đăng nhập hoặc mật khẩu", session.getSessionId());
-            }
-        } else {
-            // Đăng nhập nhanh
-            if (acc == null) {
-                acc = accountDAO.create(username, PasswordUtil.hash("123456"));
-            }
+        if (password.isEmpty()) {
+            return fail("LOGIN_FAIL", "Vui lòng nhập mật khẩu", session.getSessionId());
         }
-
-        if (acc == null) {
-            return fail("LOGIN_FAIL", "Không thể xác thực tài khoản", session.getSessionId());
+        if (acc == null || !PasswordUtil.verify(password, acc.getPasswordHash())) {
+            return fail("LOGIN_FAIL", "Sai tên đăng nhập hoặc mật khẩu", session.getSessionId());
         }
+        String busy = alreadyOnline(acc, session);
+        if (busy != null) return fail("LOGIN_FAIL", busy, session.getSessionId());
 
         SessionManager.bindAccount(session, acc);
 
@@ -109,43 +105,65 @@ public class AuthService {
     }
 
     /**
-     * Xử lý ĐĂNG NHẬP BẰNG GOOGLE
+     * Xử lý ĐĂNG NHẬP BẰNG GOOGLE. Client gửi "idToken" (JWT do Google ký); Server tự xác minh chữ ký,
+     * aud, hạn dùng rồi mới tin. Tài khoản được nhận diện bằng "sub" của Google.
      */
     public Message handleGoogleLogin(JsonObject payload, Conn conn, Session session) {
-        String email = payload.getString("email", "").trim();
-        String name = payload.getString("name", "").trim();
-
-        if (email.isEmpty()) {
-            return fail("LOGIN_FAIL", "Thông tin tài khoản Google không hợp lệ", session.getSessionId());
+        int sid = session.getSessionId();
+        GoogleTokenVerifier.GoogleUser gu;
+        try {
+            gu = GOOGLE.verify(payload.getString("idToken", ""));
+        } catch (GoogleTokenVerifier.VerifyException e) {
+            return fail("LOGIN_FAIL", e.getMessage(), sid);
         }
 
-        String username = email.contains("@") ? email.substring(0, email.indexOf('@')) : email;
-        if (username.length() > 25) username = username.substring(0, 25);
-
-        Account acc = accountDAO.findByUsername(username);
+        Account acc = accountDAO.findByGoogleSub(gu.sub());
         if (acc == null) {
-            // Tạo tài khoản mới liên kết với Google
-            acc = accountDAO.create(username, PasswordUtil.hash("google_oauth_" + email));
+            // Mật khẩu ngẫu nhiên không ai biết: tài khoản Google không thể đăng nhập bằng mật khẩu.
+            acc = accountDAO.createGoogle(uniqueUsername(gu), gu.sub(), PasswordUtil.hash(UUID.randomUUID().toString()));
         }
-
         if (acc == null) {
-            return fail("LOGIN_FAIL", "Lỗi tạo tài khoản từ Google", session.getSessionId());
+            return fail("LOGIN_FAIL", "Lỗi tạo tài khoản từ Google", sid);
         }
+        String busy = alreadyOnline(acc, session);
+        if (busy != null) return fail("LOGIN_FAIL", busy, sid);
 
         SessionManager.bindAccount(session, acc);
 
         JsonObjectBuilder b = Json.createObjectBuilder()
-                .add("sessionId", session.getSessionId())
+                .add("sessionId", sid)
                 .add("accountId", acc.getAccountId())
                 .add("username", acc.getUsername())
-                .add("ten", !name.isEmpty() ? name : acc.getUsername())
-                .add("email", email)
+                .add("ten", acc.getUsername())
+                .add("email", gu.email())
                 .add("isGoogle", true)
                 .add("tongDiem", acc.getTongDiem())
                 .add("tongTranThang", acc.getTongTranThang())
                 .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "");
 
-        return new Message("LOGIN_SUCCESS", session.getSessionId(), b.build());
+        return new Message("LOGIN_SUCCESS", sid, b.build());
+    }
+
+    /** Tên hiển thị lấy từ tên Google, tự thêm số nếu bị trùng (username là UNIQUE). */
+    private String uniqueUsername(GoogleTokenVerifier.GoogleUser gu) {
+        String base = gu.name().replaceAll("\\p{Cntrl}", "").replaceAll("\\s+", " ").trim();
+        if (base.isEmpty()) {
+            int at = gu.email().indexOf('@');
+            base = at > 0 ? gu.email().substring(0, at) : "Gamer";
+        }
+        if (base.length() > 25) base = base.substring(0, 25).trim();
+        if (base.length() < 3) base = "Gamer " + base;
+        String name = base;
+        int n = 1;
+        while (accountDAO.existsByUsername(name)) name = base + " " + (++n);
+        return name;
+    }
+
+    /** Một tài khoản chỉ được đăng nhập ở một nơi (tránh trùng người chơi trong cùng phòng). */
+    private static String alreadyOnline(Account acc, Session session) {
+        Session other = SessionManager.getSessionByAccount(acc.getAccountId());
+        return (other != null && other.getSessionId() != session.getSessionId())
+                ? "Tài khoản đang đăng nhập ở nơi khác" : null;
     }
 
     /**

@@ -77,6 +77,39 @@ public class AccountDAO {
         return null;
     }
 
+    public Account findByGoogleSub(String sub) {
+        String sql = "SELECT accountId, username, passwordHash, tongDiem, tongTranThang, ngayTao FROM Account WHERE googleSub = ?";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, sub);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapResultSet(rs);
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi tìm account theo Google: " + e.getMessage());
+        }
+        return null;
+    }
+
+    /** Tạo tài khoản liên kết Google. Định danh bằng "sub" đã xác minh, KHÔNG dựa vào email hay tên. */
+    public Account createGoogle(String username, String googleSub, String passwordHash) {
+        String sql = "INSERT INTO Account (username, passwordHash, googleSub, tongDiem, tongTranThang, ngayTao) VALUES (?, ?, ?, 0, 0, NOW())";
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, username);
+            ps.setString(2, passwordHash);
+            ps.setString(3, googleSub);
+            if (ps.executeUpdate() > 0) {
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (keys.next()) return findById(keys.getInt(1));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Lỗi tạo account Google: " + e.getMessage());
+        }
+        return null;
+    }
+
     public void updateStats(int accountId, int scoreDelta, boolean isWin) {
         String sql = "UPDATE Account SET tongDiem = tongDiem + ?, tongTranThang = tongTranThang + ? WHERE accountId = ?";
         try (Connection conn = DatabaseManager.getConnection();
@@ -157,4 +190,3 @@ public class AccountDAO {
         );
     }
 }
-
