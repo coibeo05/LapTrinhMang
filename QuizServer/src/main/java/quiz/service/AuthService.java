@@ -20,6 +20,24 @@ import java.util.UUID;
  */
 public class AuthService {
     private static final GoogleTokenVerifier GOOGLE = GoogleTokenVerifier.createDefault();
+
+    private static final java.util.Map<String, long[]> TOKENS = new java.util.concurrent.ConcurrentHashMap<>();   // token -> {accountId, hạn dùng (ms)}
+    private static final java.security.SecureRandom RNG = new java.security.SecureRandom();
+
+    /** Cấp token để Client tự đăng nhập lại khi tải lại trang. Lưu trong RAM, hết hạn sau 7 ngày, mất khi Server khởi động lại. */
+    private static String issueToken(int accountId) {
+        byte[] raw = new byte[24];
+        RNG.nextBytes(raw);
+        String t = java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+        long now = System.currentTimeMillis();
+        TOKENS.values().removeIf(v -> v[1] < now);   // dọn token hết hạn
+        TOKENS.put(t, new long[] { accountId, now + 7L * 24 * 3600 * 1000 });
+        return t;
+    }
+
+    public static void revokeTokens(int accountId) {
+        TOKENS.values().removeIf(v -> v[0] == accountId);
+    }
     private final AccountDAO accountDAO;
     private final MatchResultDAO matchResultDAO;
 
@@ -99,7 +117,8 @@ public class AuthService {
                 .add("ten", acc.getUsername())
                 .add("tongDiem", acc.getTongDiem())
                 .add("tongTranThang", acc.getTongTranThang())
-                .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "");
+                .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "")
+                .add("token", issueToken(acc.getAccountId()));
 
         return new Message("LOGIN_SUCCESS", session.getSessionId(), b.build());
     }
@@ -139,7 +158,8 @@ public class AuthService {
                 .add("isGoogle", true)
                 .add("tongDiem", acc.getTongDiem())
                 .add("tongTranThang", acc.getTongTranThang())
-                .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "");
+                .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "")
+                .add("token", issueToken(acc.getAccountId()));
 
         return new Message("LOGIN_SUCCESS", sid, b.build());
     }
@@ -166,6 +186,38 @@ public class AuthService {
                 ? "Tài khoản đang đăng nhập ở nơi khác" : null;
     }
 
+    /** Khôi phục phiên sau khi tải lại trang: Client gửi "token" đã nhận lúc đăng nhập. */
+    public Message handleResume(JsonObject payload, Conn conn, Session session) {
+        int sid = session.getSessionId();
+        String tk = payload.getString("token", "");
+        long[] v = TOKENS.get(tk);
+        if (v == null || v[1] < System.currentTimeMillis()) {
+            TOKENS.remove(tk);
+            return fail("RESUME_FAIL", "Phiên đăng nhập đã hết hạn", sid);
+        }
+        Account acc = accountDAO.findById((int) v[0]);
+        if (acc == null) {
+            TOKENS.remove(tk);
+            return fail("RESUME_FAIL", "Tài khoản không còn tồn tại", sid);
+        }
+
+        // Tải lại trang: kết nối cũ có thể chưa kịp đóng, nên cho kết nối mới chiếm chỗ và đóng kết nối cũ.
+        Session other = SessionManager.getSessionByAccount(acc.getAccountId());
+        if (other != null && other.getSessionId() != sid && other.getConn() != null) other.getConn().close();
+        SessionManager.bindAccount(session, acc);
+
+        JsonObjectBuilder b = Json.createObjectBuilder()
+                .add("sessionId", sid)
+                .add("accountId", acc.getAccountId())
+                .add("username", acc.getUsername())
+                .add("ten", acc.getUsername())
+                .add("tongDiem", acc.getTongDiem())
+                .add("tongTranThang", acc.getTongTranThang())
+                .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "")
+                .add("token", tk);
+        return new Message("LOGIN_SUCCESS", sid, b.build());
+    }
+
     /**
      * Xử lý ĐỔI MẬT KHẨU / SỬA THÔNG TIN
      */
@@ -190,6 +242,7 @@ public class AuthService {
         String newHash = PasswordUtil.hash(newPass);
         boolean ok = accountDAO.updatePassword(acc.getAccountId(), newHash);
         if (ok) {
+            revokeTokens(acc.getAccountId());   // đổi mật khẩu thì các phiên đã lưu phải đăng nhập lại
             return new Message("CHANGE_PASSWORD_SUCCESS", session.getSessionId(),
                     Json.createObjectBuilder().add("thongBao", "Đổi mật khẩu thành công").build());
         } else {

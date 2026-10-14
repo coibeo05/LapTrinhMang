@@ -80,6 +80,7 @@ public class Game {
             if (type.equals("REGISTER")) { register(s, p); return; }
             if (type.equals("LOGIN")) { login(s, p); return; }
             if (type.equals("GOOGLE_LOGIN")) { googleLogin(s, p); return; }
+            if (type.equals("RESUME")) { resume(s, p); return; }
             Player me = me(s);
             if (me == null) { error(s, "Bạn chưa đăng nhập"); return; }
             Room r = me.room;
@@ -139,7 +140,8 @@ public class Game {
                     .add("username", acc.getUsername())
                     .add("tongDiem", acc.getTongDiem())
                     .add("tongTranThang", acc.getTongTranThang())
-                    .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "");
+                    .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "")
+                    .add("token", res.payload().getString("token", ""));
             send(s, "LOGIN_OK", payload);
         } else {
             error(s, res.payload().getString("lyDo", "Đăng nhập thất bại"));
@@ -160,6 +162,21 @@ public class Game {
         }
     }
 
+    /** Tải lại trang: Client gửi token đã lưu để đăng nhập lại mà không phải nhập tay. */
+    private void resume(Conn s, JsonObject p) {
+        Message res = authService.handleResume(p, s, s.session);
+        if ("LOGIN_SUCCESS".equals(res.type())) {
+            Account acc = s.session.getAccount();
+            Player old = me(s);
+            if (old != null && old.room != null) old.room.leave(old);
+            s.p = new Player(acc.getAccountId(), acc.getUsername(), s, acc);
+            send(s, "LOGIN_OK", res.payload());
+        } else {
+            send(s, "RESUME_FAIL", Json.createObjectBuilder()
+                    .add("thongBao", res.payload().getString("lyDo", "Phiên đăng nhập đã hết hạn")));
+        }
+    }
+
     private void changePassword(Conn s, JsonObject p) {
         Message res = authService.handleChangePassword(p, s.session);
         send(s, res.type(), res.payload());
@@ -176,6 +193,7 @@ public class Game {
     }
 
     private void logout(Conn s) {
+        if (s.session != null && s.session.getAccount() != null) AuthService.revokeTokens(s.session.getAccount().getAccountId());
         Player p = me(s);
         if (p != null && p.room != null) p.room.leave(p);
         s.p = null;

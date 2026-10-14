@@ -21,10 +21,14 @@ let answered = false, touched = false, chosen = null, endAt = 0, pendingRank = [
 let currentUser = null;
 
 // ---------- Kết nối ----------
+// Token đăng nhập lưu trong trình duyệt để tải lại trang không bị văng ra màn hình đăng nhập.
+const getToken = () => { try { return localStorage.getItem('quizToken'); } catch (e) { return null; } };
+const setToken = t => { try { if (t) localStorage.setItem('quizToken', t); else localStorage.removeItem('quizToken'); } catch (e) { /* bỏ qua */ } };
+
 function connect() {
   const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws';
   ws = new WebSocket(url);
-  ws.onopen = () => { $('conn').className = 'dot on'; };
+  ws.onopen = () => { $('conn').className = 'dot on'; const t = getToken(); if (t) send('RESUME', { token: t }); };
   ws.onclose = () => { $('conn').className = 'dot'; toast('Mất kết nối tới Server'); };
   ws.onmessage = e => handle(JSON.parse(e.data));
 }
@@ -70,6 +74,7 @@ function handle(m) {
     case 'LOGIN_OK':
     case 'LOGIN_SUCCESS':
       currentUser = p;
+      if (p.token) setToken(p.token);
       CFG.accountId = p.accountId;
       if (p.sessionId) CFG.sessionId = p.sessionId;
       $('userInfo').textContent = (p.username || p.ten || '') + ' · ' + (p.tongDiem || 0) + ' điểm';
@@ -85,6 +90,7 @@ function handle(m) {
       toast('Đăng nhập thành công: ' + (p.username || p.ten || ''));
       goHome();
       break;
+    case 'RESUME_FAIL': setToken(null); break;   // token hết hạn: ở lại màn hình đăng nhập
     case 'LOGIN_FAIL':
       toast(p.thongBao || p.lyDo || 'Đăng nhập thất bại');
       break;
@@ -466,6 +472,7 @@ $('btnChat').onclick = () => { const i = $('chatIn'); if (i.value.trim()) send('
 $('chatIn').onkeydown = e => { if (e.key === 'Enter') $('btnChat').click(); };
 // ---------- Xác thực & Hồ sơ ----------
 function doLogout() {
+  setToken(null);
   CFG.accountId = 0;
   currentUser = null;
   $('userAvatarContainer').classList.add('hidden');

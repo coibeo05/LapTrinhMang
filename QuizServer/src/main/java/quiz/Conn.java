@@ -24,6 +24,11 @@ public class Conn {
         this.session = SessionManager.createSession(this);
     }
 
+    /** Đóng kết nối (dùng khi người chơi tải lại trang và kết nối cũ chưa kịp đóng). */
+    public void close() {
+        try { sock.close(); } catch (IOException ignored) { }
+    }
+
     public void sendLine(String json) {
         try {
             synchronized (out) {
