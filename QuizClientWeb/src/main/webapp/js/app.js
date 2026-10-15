@@ -43,6 +43,7 @@ function show(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id));
   $('btnLeave').classList.toggle('hidden', !['intro', 'question', 'ranking'].includes(id));
   document.querySelector('main').classList.toggle('wide', id === 'createSet');
+  document.querySelector('main').classList.toggle('lobby', id === 'waiting');
 }
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.remove('hidden');
@@ -119,13 +120,30 @@ function handle(m) {
     case 'ROOM_LIST': renderRooms(p.rooms || []); break;
     case 'ROOM_UPDATE': onRoomCreated(p); break;
     case 'ROOM_CLOSED': toast(p.lyDo || 'Phòng đã đóng'); goHome(); break;
-    case 'CHAT': { const l = el('div', '', p.ten + ': ' + p.noiDung); $('chatLog').append(l); $('chatLog').scrollTop = 1e9; break; }
+    case 'CHAT': appendChat(p); break;
+    case 'CHAT_SYSTEM': appendSystemChat(p); break;
     case 'ERROR': toast(p.thongBao || 'Có lỗi xảy ra'); break;
   }
 }
 function endScreen(title, text, rows) {
   $('endTitle').textContent = title; $('endText').textContent = text;
   fillTable($('finalTable'), rows); show('end');
+}
+
+function chatTime(sentAt) {
+  const d = sentAt ? new Date(sentAt) : new Date();
+  return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+}
+function appendChat(p) {
+  const mine = p.accountId === CFG.accountId;
+  const wrap = el('div', 'chat-message ' + (mine ? 'mine' : 'other'));
+  const meta = el('div', 'chat-meta', (mine ? 'Bạn' : (p.ten || 'Người chơi')) + ' · ' + chatTime(p.sentAt));
+  const bubble = el('div', 'chat-bubble', p.noiDung || '');
+  wrap.append(meta, bubble); $('chatLog').append(wrap); $('chatLog').scrollTop = $('chatLog').scrollHeight;
+}
+function appendSystemChat(p) {
+  const note = el('div', 'chat-system', (p.noiDung || '') + ' · ' + chatTime(p.sentAt));
+  $('chatLog').append(note); $('chatLog').scrollTop = $('chatLog').scrollHeight;
 }
 
 // ---------- Câu hỏi ----------
@@ -468,8 +486,46 @@ $('btnJoinCode').onclick = joinCode;
 $('joinCode').onkeydown = e => { if (e.key === 'Enter') joinCode(); };
 $('btnAddBot').onclick = () => send('ADD_BOT');
 $('btnRefresh').onclick = () => send('LIST_ROOMS');
-$('btnChat').onclick = () => { const i = $('chatIn'); if (i.value.trim()) send('CHAT', { noiDung: i.value }); i.value = ''; };
+$('btnChat').onclick = () => {
+  const i = $('chatIn');
+  if (i.value.trim()) send('CHAT', { noiDung: i.value });
+  i.value = '';
+  $('emojiPicker').classList.add('hidden');
+};
 $('chatIn').onkeydown = e => { if (e.key === 'Enter') $('btnChat').click(); };
+
+const emojiBox = $('emojiPicker');
+const emojiBtn = $('btnEmoji');
+
+emojiBtn.onclick = e => {
+  e.stopPropagation();
+  emojiBox.classList.toggle('hidden');
+};
+
+emojiBox.onclick = e => {
+  e.stopPropagation();
+};
+
+document.querySelectorAll('#emojiPicker button').forEach(b => {
+  b.onclick = e => {
+    e.stopPropagation();
+    const input = $('chatIn');
+    input.value += b.textContent;
+    input.focus();
+  };
+});
+
+document.addEventListener('click', e => {
+  if (!emojiBox.classList.contains('hidden') && !emojiBtn.contains(e.target) && !emojiBox.contains(e.target)) {
+    emojiBox.classList.add('hidden');
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !emojiBox.classList.contains('hidden')) {
+    emojiBox.classList.add('hidden');
+  }
+});
 // ---------- Xác thực & Hồ sơ ----------
 function doLogout() {
   setToken(null);

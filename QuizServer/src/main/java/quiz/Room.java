@@ -101,12 +101,19 @@ class Room {
         if (ps.size() >= MAX) { p.send("ERROR", Json.createObjectBuilder().add("thongBao", "Phòng đã đầy")); return; }
         ps.add(p); p.room = this; p.score = 0;
         update();   // TODO: chủ phòng đồng ý/từ chối (hiện cho vào thẳng)
+        systemChat(p.ten + " đã vào phòng");
     }
 
     synchronized void chat(Player p, String t) {   // TẠM: chỉ phát lại trong phòng, chưa lưu ChatMessage
+        if (playing) return;  // chat chỉ dành cho phòng chờ
         t = t.trim();
         if (t.isEmpty() || t.length() > 200) return;
-        all("CHAT", Json.createObjectBuilder().add("ten", p.ten).add("noiDung", t));
+        all("CHAT", Json.createObjectBuilder().add("accountId", p.id).add("ten", p.ten)
+                .add("noiDung", t).add("sentAt", System.currentTimeMillis()));
+    }
+
+    private void systemChat(String text) {
+        all("CHAT_SYSTEM", Json.createObjectBuilder().add("noiDung", text).add("sentAt", System.currentTimeMillis()));
     }
 
     synchronized void start(Player p) {
@@ -224,7 +231,7 @@ class Room {
         if (ps.stream().allMatch(x -> x.ws == null)) { drop(); return; }   // hết người thật thì đóng phòng
         if (!playing) {
             if (p == host) { all("ROOM_CLOSED", Json.createObjectBuilder().add("lyDo", "Chủ phòng đã rời, phòng bị giải tán")); drop(); }
-            else update();
+            else { systemChat(p.ten + " đã rời phòng"); update(); }
             return;
         }
         if (ps.size() < 2) { all("MATCH_CANCELLED", Json.createObjectBuilder().add("lyDo", "Không đủ người chơi, trận bị hủy")); drop(); return; }

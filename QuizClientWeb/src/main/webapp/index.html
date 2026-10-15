@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>QUIZ - Vòng chơi</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=12">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 <header>
@@ -103,16 +103,55 @@
   </section>
 
   <section id="waiting" class="screen hidden">
-    <h2 id="roomTitle"></h2>
-    <p id="roomInfo"></p>
-    <h3>Người chơi trong phòng</h3>
-    <ul id="playerList"></ul>
-    <div id="chatLog"></div>
-    <div class="actions"><input type="text" id="chatIn" maxlength="200" placeholder="Nhắn tin trong phòng..."><button id="btnChat" class="alt">Gửi</button></div>
-    <div class="actions">
-      <button id="btnAddBot" class="alt">Thêm bot</button>
-      <button id="btnStart">Bắt đầu</button>
-      <button id="btnLeaveRoom" class="alt">Rời phòng</button>
+    <div class="lobby-layout">
+      <div class="lobby-info">
+        <h2 id="roomTitle"></h2>
+        <p id="roomInfo"></p>
+        <h3>Người chơi trong phòng</h3>
+        <ul id="playerList"></ul>
+        <div class="actions lobby-actions">
+          <button id="btnAddBot" class="alt">Thêm bot</button>
+          <button id="btnStart">Bắt đầu</button>
+          <button id="btnLeaveRoom" class="alt">Rời phòng</button>
+        </div>
+      </div>
+      <aside class="chat-panel" aria-label="Chat phòng chờ">
+        <div class="chat-heading"><span>💬 Chat phòng chờ</span><small>Chỉ mở trước trận</small></div>
+        <div id="chatLog" class="chat-log" aria-live="polite"></div>
+        <div class="chat-compose">
+          <div class="emoji-wrap">
+            <button id="btnEmoji" class="emoji-button" type="button" title="Chọn biểu tượng cảm xúc">😊</button>
+            <div id="emojiPicker" class="emoji-picker hidden" aria-label="Chọn biểu tượng cảm xúc">
+              <button type="button" title="Cười tươi">😀</button>
+              <button type="button" title="Cười toe toét">😁</button>
+              <button type="button" title="Cười ra nước mắt">😂</button>
+              <button type="button" title="Cười lăn lộn">🤣</button>
+              <button type="button" title="Mắt trái tim">😍</button>
+              <button type="button" title="Hạnh phúc">🥰</button>
+              <button type="button" title="Ngầu">😎</button>
+              <button type="button" title="Tiệc tùng">🥳</button>
+              <button type="button" title="Suy nghĩ">🤔</button>
+              <button type="button" title="Suỵt im lặng">🤫</button>
+              <button type="button" title="Khóc">😭</button>
+              <button type="button" title="Hết hồn">😱</button>
+              <button type="button" title="Tức giận">😡</button>
+              <button type="button" title="Thích">👍</button>
+              <button type="button" title="Không thích">👎</button>
+              <button type="button" title="Vỗ tay">👏</button>
+              <button type="button" title="Cảm ơn / Cầu nguyện">🙏</button>
+              <button type="button" title="Ăn mừng">🎉</button>
+              <button type="button" title="Cháy quá">🔥</button>
+              <button type="button" title="Cố lên">💪</button>
+              <button type="button" title="Trái tim">❤️</button>
+              <button type="button" title="Ngôi sao">⭐</button>
+              <button type="button" title="Bắt tay">🤝</button>
+              <button type="button" title="100 điểm">💯</button>
+            </div>
+          </div>
+          <input type="text" id="chatIn" maxlength="200" placeholder="Nhắn tin với mọi người..." autocomplete="off">
+          <button id="btnChat" class="chat-send" type="button">Gửi</button>
+        </div>
+      </aside>
     </div>
   </section>
 
@@ -207,6 +246,6 @@
 </div>
 <div id="toast" class="hidden"></div>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="js/app.js?v=12"></script>
+<script src="js/app.js?v=13"></script>
 </body>
 </html>
