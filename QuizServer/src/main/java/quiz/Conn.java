@@ -15,6 +15,12 @@ public class Conn {
     public final String id = UUID.randomUUID().toString();
     public volatile Player p;          // Người chơi đã đăng nhập trên kết nối này
     public volatile Session session;   // Phiên làm việc (Session) của kết nối này
+    public volatile boolean admin;     // đã xác thực trang quản trị
+    public volatile int adminFails;    // số lần nhập sai mật khẩu quản trị
+    public volatile double rttMs;      // độ trễ khứ hồi tới người chơi (ms), làm mượt
+    public volatile int pingSeq;       // số thứ tự PING gần nhất
+    public volatile long pingSentNs;   // thời điểm Server gửi PING gần nhất
+    public volatile long lastPongAt;   // lần cuối nhận PONG hợp lệ (ms)
     private final Socket sock;
     private final BufferedWriter out;
 
@@ -34,6 +40,11 @@ public class Conn {
         } catch (IOException e) {
             /* Client đã đóng kết nối */
         }
+    }
+
+    /** Đóng socket (quản trị viên ngắt kết nối). run() tự dọn session và rời phòng. */
+    public void close() {
+        try { sock.close(); } catch (IOException ignored) { }
     }
 
     void run(Game g) {

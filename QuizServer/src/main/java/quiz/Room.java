@@ -9,6 +9,10 @@ import quiz.Game.QSet;
 import quiz.model.Account;
 import quiz.db.AccountDAO;
 import quiz.db.MatchResultDAO;
+import quiz.db.ChatMessageDAO;
+import quiz.model.ChatMessage;
+import quiz.util.ActivityLog;
+import java.time.LocalDateTime;
 
 /** Người chơi đang online. Tích hợp Account từ CSDL (Module 1). */
 class Player {
@@ -58,10 +62,12 @@ class Room {
     });
 
     final String id = newCode();
-    final String ten;
-    final boolean hidden;   // true: không hiện trong danh sách, chỉ vào được bằng mã
-    final QSet set;
-    final int total;
+    volatile String ten;
+    volatile boolean hidden;   // true: không hiện trong danh sách, chỉ vào được bằng mã
+    volatile QSet set;
+    volatile int total;
+    volatile int maxPlayers = MAX;   // số người tối đa của phòng (chủ phòng chỉnh được, 2..MAX)
+    volatile int giay;               // 0: dùng thời gian riêng của từng câu; >0: mọi câu dùng số giây này
     final Player host;
     final List<Player> ps = new ArrayList<>();
     private boolean playing, open;
@@ -71,6 +77,11 @@ class Room {
     private final Map<Player, JsonValue> ans = new HashMap<>();
     private final Map<Player, Double> at = new HashMap<>();
     private final Set<Player> ready = new HashSet<>();
+    private final Set<Player> waitReady = new HashSet<>();   // người chơi đã bấm "Sẵn sàng" ở phòng chờ
+    private final List<ChatMessage> chatLog = new ArrayList<>();   // chat của trận, lưu DB khi kết thúc
+    private final Map<Player, Integer> okCount = new HashMap<>();   // số câu đúng
+    private final Map<Player, Integer> answered = new HashMap<>();  // số câu đã trả lời
+    private final Map<Player, Double> timeSum = new HashMap<>();    // tổng thời gian trả lời (giây)
     private ScheduledFuture<?> tm;
 
     Room(Player host, String ten, QSet set, int soCau, boolean hidden) {
@@ -78,35 +89,49 @@ class Room {
         this.host = host; this.ten = ten; this.set = set; this.total = soCau;
         ps.add(host); host.room = this; host.score = 0;
         ALL.put(id, this);
+        ActivityLog.add(host.ten + " tạo phòng " + id + " (" + ten + ")");
     }
 
     static JsonArrayBuilder list() {
         JsonArrayBuilder a = Json.createArrayBuilder();
         for (Room r : ALL.values())
-            if (!r.playing && !r.hidden) a.add(Json.createObjectBuilder().add("roomId", r.id).add("ten", r.ten)
-                    .add("tenBo", r.set.ten()).add("soNguoi", r.ps.size()).add("toiDa", MAX));
+            if (!r.hidden) a.add(Json.createObjectBuilder().add("roomId", r.id).add("ten", r.ten)
+                    .add("tenBo", r.set.ten()).add("soNguoi", r.count()).add("toiDa", r.maxPlayers).add("soCau", r.total)
+                    .add("giay", r.secsAvg())
+                    .add("trangThai", r.isPlaying() ? "CHOI" : "CHO").add("chuPhong", r.host.ten));
         return a;
     }
 
     // ---------- Phòng chờ ----------
     synchronized void update() {
         JsonArrayBuilder a = Json.createArrayBuilder();
-        for (Player p : ps) a.add(Json.createObjectBuilder().add("accountId", p.id).add("ten", p.ten));
+        int readyN = 0;
+        for (Player p : ps) {
+            boolean sr = p == host || p.ws == null || waitReady.contains(p);   // chủ phòng và bot luôn sẵn sàng
+            if (sr) readyN++;
+            a.add(Json.createObjectBuilder().add("accountId", p.id).add("ten", p.ten).add("sanSang", sr));
+        }
         all("ROOM_UPDATE", Json.createObjectBuilder().add("roomId", id).add("ten", ten).add("tenBo", set.ten())
-                .add("soCau", total).add("chuPhong", host.id).add("nguoiChoi", a));
+                .add("setId", set.setId()).add("tongCauBo", set.qs().size())
+                .add("soCau", total).add("giay", giay).add("chuPhong", host.id).add("toiDa", maxPlayers).add("an", hidden)
+                .add("soSanSang", readyN).add("nguoiChoi", a));
     }
 
     synchronized void join(Player p) {
         if (playing) { p.send("ERROR", Json.createObjectBuilder().add("thongBao", "Phòng đã bắt đầu thi đấu")); return; }
-        if (ps.size() >= MAX) { p.send("ERROR", Json.createObjectBuilder().add("thongBao", "Phòng đã đầy")); return; }
+        if (ps.size() >= maxPlayers) { p.send("ERROR", Json.createObjectBuilder().add("thongBao", "Phòng đã đầy")); return; }
         ps.add(p); p.room = this; p.score = 0;
+        ActivityLog.add(p.ten + " vào phòng " + id);
         update();   // TODO: chủ phòng đồng ý/từ chối (hiện cho vào thẳng)
     }
 
-    synchronized void chat(Player p, String t) {   // TẠM: chỉ phát lại trong phòng, chưa lưu ChatMessage
+    synchronized void chat(Player p, String t) {
         t = t.trim();
         if (t.isEmpty() || t.length() > 200) return;
-        all("CHAT", Json.createObjectBuilder().add("ten", p.ten).add("noiDung", t));
+        if (p.id > 0) chatLog.add(new ChatMessage(p.id, t, LocalDateTime.now()));   // bot không chat
+        LocalDateTime now = LocalDateTime.now();
+        all("CHAT", Json.createObjectBuilder().add("accountId", p.id).add("ten", p.ten).add("noiDung", t)
+                .add("gio", String.format("%02d:%02d", now.getHour(), now.getMinute())));
     }
 
     synchronized void start(Player p) {
@@ -114,6 +139,8 @@ class Room {
         if (ps.size() < 2) { p.send("ERROR", Json.createObjectBuilder().add("thongBao", "Cần ít nhất 2 người chơi")); return; }
         playing = true;
         ps.forEach(x -> x.score = 0);
+        okCount.clear(); answered.clear(); timeSum.clear();
+        ActivityLog.add("Phòng " + id + " bắt đầu trận (" + ps.size() + " người)");
         next();
     }
 
@@ -127,12 +154,13 @@ class Room {
         int delay = intro ? 3 : 0;   // timer câu hỏi chỉ chạy sau màn giới thiệu 3s
         startNs = System.nanoTime() + delay * 1_000_000_000L;
         JsonObjectBuilder b = Json.createObjectBuilder().add("questionId", q.id()).add("loaiCauHoi", q.type())
-                .add("noiDung", q.text()).add("duLieuDapAn", q.pub()).add("showIntro", intro).add("thoiGianCauHoi", q.time());
+                .add("noiDung", q.text()).add("duLieuDapAn", q.pub()).add("showIntro", intro).add("thoiGianCauHoi", secs(q))
+                .add("cauSo", idx + 1).add("tongCau", total);
         if (q.image() != null) b.add("anh", q.image());
         if (q.audio() != null) b.add("amThanh", q.audio());
         all("QUESTION_DATA", b);
         for (Player bt : ps) if (bt.ws == null) {   // bot trả lời sau vài giây, đúng khoảng 60%
-            int w = (int) (delay + 1 + Math.random() * Math.max(1, Math.min(q.time() - 2, 8)));
+            int w = (int) (delay + 1 + Math.random() * Math.max(1, Math.min(secs(q) - 2, 8)));
             int rr = round;
             TIMER.schedule(() -> { synchronized (this) {
                 if (open && round == rr && ps.contains(bt) && !ans.containsKey(bt))
@@ -141,7 +169,7 @@ class Room {
         }
         int r = round;
         tm = TIMER.schedule(() -> { synchronized (this) { if (open && round == r) close(); } },
-                delay + q.time() + 2, TimeUnit.SECONDS);
+                delay + secs(q) + 2, TimeUnit.SECONDS);
     }
 
     synchronized void submit(Player p, JsonObject d) {
@@ -160,7 +188,7 @@ class Room {
 
     synchronized void addBot(Player p) {
         if (p != host || playing) return;
-        if (ps.size() >= MAX) { p.send("ERROR", Json.createObjectBuilder().add("thongBao", "Phòng đã đầy")); return; }
+        if (ps.size() >= maxPlayers) { p.send("ERROR", Json.createObjectBuilder().add("thongBao", "Phòng đã đầy")); return; }
         int n = BOTS.incrementAndGet();
         ps.add(new Player(-n, "Bot " + n, null));
         update();
@@ -179,10 +207,15 @@ class Room {
         JsonArrayBuilder rs = Json.createArrayBuilder();
         for (Player p : ps) {
             boolean ok;
-            try { ok = ans.containsKey(p) && at.get(p) <= q.time() + 1 && Game.check(q, ans.get(p)); }
+            try { ok = ans.containsKey(p) && at.get(p) <= secs(q) + 1 && Game.check(q, ans.get(p)); }
             catch (RuntimeException e) { ok = false; }
-            int pts = ok ? Math.max(400, 1000 - 100 * (int) (at.get(p) / (2.0 * q.time() / 15))) : 0;
+            int pts = ok ? Math.max(400, 1000 - 100 * (int) (at.get(p) / (2.0 * secs(q) / 15))) : 0;
             p.score += pts;
+            if (ok) okCount.merge(p, 1, Integer::sum);
+            if (ans.containsKey(p) && at.containsKey(p)) {
+                timeSum.merge(p, Math.min(at.get(p), (double) secs(q)), Double::sum);
+                answered.merge(p, 1, Integer::sum);
+            }
             rs.add(Json.createObjectBuilder().add("accountId", p.id).add("dungSai", ok).add("diemVuaCong", pts));
         }
         all("ANSWER_RESULT", Json.createObjectBuilder().add("questionId", q.id()).add("dapAnDung", q.key()).add("danhSachKetQua", rs));
@@ -198,6 +231,7 @@ class Room {
     }
 
     private void finish() {
+        ActivityLog.add("Phòng " + id + " kết thúc trận");
         all("MATCH_END", Json.createObjectBuilder().add("lastQues", 1).add("ketQuaCuoi", ranking()));
         // Cập nhật điểm tích lũy và lưu lịch sử trận đấu (Module 1 + 4)
         List<Player> sorted = new ArrayList<>(ps);
@@ -215,12 +249,81 @@ class Room {
                 }
             }
         }
+        if (matchId > 0) new ChatMessageDAO().insertAll(matchId, new ArrayList<>(chatLog));
         drop();
+    }
+
+    // ---------- Cài đặt phòng chờ (chỉ chủ phòng) ----------
+    private int secs(Q q) { return giay > 0 ? giay : q.time(); }
+
+    int secsAvg() { return giay > 0 ? giay : (int) Math.round(set.qs().stream().mapToInt(Q::time).average().orElse(15)); }
+
+    /**
+     * Chủ phòng chỉnh cài đặt khi phòng đang chờ. d chứa các khóa muốn đổi (ten, soCau, giay, toiDa, an);
+     * newSet là bộ câu hỏi mới đã được kiểm tra quyền xem (null nếu không đổi bộ).
+     * @return thông báo lỗi, hoặc null nếu thành công
+     */
+    synchronized String configure(Player by, JsonObject d, QSet newSet) {
+        if (by != host) return "Chỉ chủ phòng được chỉnh cài đặt";
+        if (playing) return "Phòng đã bắt đầu thi đấu";
+        if (d.containsKey("ten")) {
+            String t = d.getString("ten", "").trim().replaceAll("\\s+", " ");
+            if (t.isEmpty()) return "Tên phòng không được để trống";
+            ten = t.length() > 40 ? t.substring(0, 40) : t;
+        }
+        if (newSet != null) set = newSet;
+        int size = set.qs().size();
+        total = d.containsKey("soCau") ? Math.max(1, Math.min(d.getInt("soCau", total), size)) : Math.min(total, size);
+        if (d.containsKey("giay")) { int g = d.getInt("giay", 0); giay = (g >= 5 && g <= 90) ? g : 0; }
+        if (d.containsKey("toiDa")) maxPlayers = Math.max(Math.max(2, ps.size()), Math.min(MAX, d.getInt("toiDa", maxPlayers)));
+        if (d.containsKey("an")) hidden = d.getBoolean("an", hidden);
+        ActivityLog.add(by.ten + " chỉnh cài đặt phòng " + id);
+        update();
+        return null;
+    }
+
+    synchronized void setReady(Player p, boolean r) {
+        if (playing || !ps.contains(p) || p == host) return;
+        if (r) waitReady.add(p); else waitReady.remove(p);
+        update();
+    }
+
+    /** Chủ phòng mời một người (hoặc bot) ra khỏi phòng chờ. */
+    synchronized void kickBy(Player by, int targetId) {
+        if (by != host || playing || targetId == host.id) return;
+        Player t = null;
+        for (Player x : ps) if (x.id == targetId) t = x;
+        if (t == null) return;
+        ActivityLog.add(by.ten + " mời " + t.ten + " ra khỏi phòng " + id);
+        if (t.ws != null) t.send("ROOM_CLOSED", Json.createObjectBuilder().add("lyDo", "Chủ phòng đã mời bạn ra khỏi phòng"));
+        leave(t);
+    }
+
+    // ---------- Dành cho trang quản trị ----------
+    synchronized int count() { return ps.size(); }
+
+    synchronized boolean isPlaying() { return playing; }
+
+    /** Quản trị viên đóng phòng: mọi người về sảnh. */
+    synchronized void adminClose(String reason) {
+        ActivityLog.add("Quản trị viên đóng phòng " + id);
+        all("ROOM_CLOSED", Json.createObjectBuilder().add("lyDo", reason));
+        drop();
+    }
+
+    /** Quản trị viên đuổi một người khỏi phòng (vẫn online). */
+    synchronized void adminKick(Player p, String reason) {
+        if (!ps.contains(p)) return;
+        ActivityLog.add("Quản trị viên mời " + p.ten + " ra khỏi phòng " + id);
+        p.send("ROOM_CLOSED", Json.createObjectBuilder().add("lyDo", reason));
+        leave(p);
     }
 
     synchronized void leave(Player p) {
         if (!ps.remove(p)) return;
         p.room = null; p.score = 0;
+        waitReady.remove(p);
+        ActivityLog.add(p.ten + " rời phòng " + id);
         if (ps.stream().allMatch(x -> x.ws == null)) { drop(); return; }   // hết người thật thì đóng phòng
         if (!playing) {
             if (p == host) { all("ROOM_CLOSED", Json.createObjectBuilder().add("lyDo", "Chủ phòng đã rời, phòng bị giải tán")); drop(); }
@@ -247,9 +350,14 @@ class Room {
         List<Player> l = new ArrayList<>(ps);
         l.sort((a, b) -> b.score - a.score);
         JsonArrayBuilder a = Json.createArrayBuilder();
-        for (int i = 0; i < l.size(); i++)
-            a.add(Json.createObjectBuilder().add("accountId", l.get(i).id).add("ten", l.get(i).ten)
-                    .add("diemHienTai", l.get(i).score).add("thuHang", i + 1));
+        for (int i = 0; i < l.size(); i++) {
+            Player pl = l.get(i);
+            int n = answered.getOrDefault(pl, 0);
+            a.add(Json.createObjectBuilder().add("accountId", pl.id).add("ten", pl.ten)
+                    .add("diemHienTai", pl.score).add("thuHang", i + 1)
+                    .add("soDung", okCount.getOrDefault(pl, 0)).add("tongCau", total)
+                    .add("tbGiay", n == 0 ? 0.0 : Math.round(timeSum.getOrDefault(pl, 0.0) / n * 10) / 10.0));
+        }
         return a;
     }
 

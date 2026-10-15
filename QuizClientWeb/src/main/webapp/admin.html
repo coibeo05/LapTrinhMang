@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="vi">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>QUIZ - Quản trị máy chủ</title>
+        <link rel="icon" type="image/png" href="img/favicon.png">
+        <link rel="stylesheet" href="css/admin.css?v=3">
+    </head>
+    <body>
+        <header class="top">
+            <img class="logo" src="img/logo.png" alt="QUIZ">
+            <nav>
+                <a href="#" data-view="overview" class="on">Tổng quan</a>
+                <a href="#" data-view="rooms">Phòng chơi</a>
+                <a href="#" data-view="players">Người chơi</a>
+                <a href="#" data-view="logs">Nhật ký</a>
+            </nav>
+            <span class="spacer"></span>
+            <span id="conn" class="dot" title="Trạng thái kết nối"></span>
+            <span class="who">Quản trị viên</span>
+            <button id="btnLogout" class="ghost light hidden" type="button">Đăng xuất</button>
+        </header>
+
+        <div id="loginBox" class="overlay">
+            <div class="login-card">
+                <img class="login-logo" src="img/logo.png" alt="QUIZ">
+                <h1>Quản trị máy chủ</h1>
+                <input id="pw" type="password" maxlength="64" placeholder="Mật khẩu quản trị" autocomplete="off">
+                <button id="btnLogin" class="primary" type="button">Đăng nhập</button>
+                <p id="loginErr" class="err"></p>
+            </div>
+        </div>
+
+        <main id="dash" class="hidden" data-view="overview">
+            <section id="sec-overview" class="head">
+                <div>
+                    <span class="eyebrow">QUẢN TRỊ · TRUNG TÂM ĐIỀU HÀNH</span>
+                    <h1>Trung tâm điều hành máy chủ</h1>
+                    <p class="muted">Theo dõi phòng chơi và người chơi theo thời gian thực, tự làm mới mỗi 2 giây.</p>
+                </div>
+                <div class="head-actions">
+                    <span id="srvStatus" class="pill ok">Máy chủ đang hoạt động</span>
+                    <button id="btnRefresh" class="ghost" type="button">Làm mới</button>
+                </div>
+            </section>
+
+            <section class="stats">
+                <div class="stat"><span class="lbl">Phòng đang mở</span><b id="stRooms">0</b><small id="stRoomsSub">0 đang thi đấu</small></div>
+                <div class="stat"><span class="lbl">Người chơi online</span><b id="stOnline">0</b><small id="stOnlineSub">0 trong phòng</small></div>
+                <div class="stat"><span class="lbl">Tải CPU (tiến trình)</span><b id="stCpu">0%</b><small id="stCpuSub">Bộ nhớ 0 MB</small></div>
+                <div class="stat"><span class="lbl">Độ trễ trung bình</span><b id="stPing">&mdash;</b><small id="stPingSub">Chưa có dữ liệu</small></div>
+            </section>
+
+            <div class="cols">
+                <div class="col-main">
+                    <section id="sec-rooms" class="panel">
+                        <div class="panel-head">
+                            <h2>Quản lý phòng</h2>
+                            <span id="roomCount" class="pill">0</span>
+                            <input id="roomQ" class="search" type="search" placeholder="Tìm phòng, mã, bộ câu hỏi, chủ phòng">
+                        </div>
+                        <div class="table-wrap">
+                            <table id="roomTable">
+                                <thead><tr><th>Phòng</th><th>Chủ phòng</th><th>Người</th><th>Trạng thái</th><th>Bộ câu hỏi</th><th></th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section id="sec-players" class="panel">
+                        <div class="panel-head">
+                            <h2>Người chơi online</h2>
+                            <span id="playerCount" class="pill">0</span>
+                            <input id="playerQ" class="search" type="search" placeholder="Tìm tên người chơi hoặc phòng">
+                        </div>
+                        <div class="table-wrap">
+                            <table id="playerTable">
+                                <thead><tr><th>Người chơi</th><th>Vị trí</th><th>Trạng thái</th><th></th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <aside id="sec-logs" class="panel logs">
+                    <div class="panel-head"><h2>Nhật ký hoạt động</h2></div>
+                    <ul id="logList"></ul>
+                </aside>
+            </div>
+        </main>
+
+        <div id="toast" class="hidden"></div>
+        <script src="js/admin.js?v=3"></script>
+    </body>
+</html>

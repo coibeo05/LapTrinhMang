@@ -1,0 +1,463 @@
+/* Trang quản trị: bảng màu nâu - kem của dự án */
+:root{
+    --brown:#442b15;
+    --orange:#a74713;
+    --orange-d:#8f3b0e;
+    --gold:#dd9b4b;
+    --cream:#f7efdc;
+    --paper:#fffdf9;
+    --line:#eadfce;
+    --teal:#6cb4a5;
+    --teal-bg:#e3f1ed;
+    --muted:#7a6650;
+    --red:#c0392b
+}
+*{
+    box-sizing:border-box
+}
+body{
+    margin:0;
+    font-family:"Segoe UI",system-ui,Arial,sans-serif;
+    color:#3a2a1a;
+    background:linear-gradient(#f7efdc,#fdf9ef) fixed;
+    min-height:100vh
+}
+.hidden{
+    display:none!important
+}
+.muted{
+    color:var(--muted);
+    margin:4px 0 0
+}
+code{
+    background:#f3e8d3;
+    padding:1px 6px;
+    border-radius:5px;
+    font-size:.9em
+}
+
+/* header */
+.top{
+    display:flex;
+    align-items:center;
+    gap:14px;
+    padding:10px 28px;
+    background:var(--brown);
+    border-bottom:4px solid var(--gold);
+    color:#fff;
+    position:sticky;
+    top:0;
+    z-index:5
+}
+.logo{
+    height:34px;
+    display:block;
+    filter:drop-shadow(0 0 1px #fdf3dc) drop-shadow(0 0 2px rgba(253,243,220,.85))
+}
+.top nav{
+    display:flex;
+    gap:4px;
+    margin-left:10px
+}
+.top nav a{
+    color:#e9d4af;
+    text-decoration:none;
+    font-size:14px;
+    padding:8px 16px;
+    border-radius:999px
+}
+.top nav a:hover,.top nav a.on{
+    background:rgba(233,212,175,.18);
+    color:#fff
+}
+.spacer{
+    flex:1
+}
+.who{
+    font-size:14px;
+    color:#e9d4af
+}
+.dot{
+    width:10px;
+    height:10px;
+    border-radius:50%;
+    background:var(--red);
+    display:inline-block
+}
+.dot.on{
+    background:var(--teal)
+}
+
+/* nút */
+button{
+    font-family:inherit;
+    font-size:14px;
+    border:0;
+    border-radius:10px;
+    padding:9px 16px;
+    cursor:pointer;
+    background:var(--orange);
+    color:#fff
+}
+button:hover:not(:disabled){
+    background:var(--orange-d)
+}
+button:disabled{
+    opacity:.5;
+    cursor:default
+}
+button.ghost{
+    background:#efe6da;
+    color:#5a3d24
+}
+button.ghost:hover:not(:disabled){
+    background:#e6d9c6
+}
+button.ghost.light{
+    background:rgba(233,212,175,.18);
+    color:#fff
+}
+button.sm{
+    padding:5px 11px;
+    font-size:13px;
+    border-radius:8px
+}
+button.warn{
+    background:#fbe3e0;
+    color:var(--red)
+}
+button.warn:hover:not(:disabled){
+    background:#f6cfca
+}
+button.primary{
+    width:100%;
+    height:46px;
+    font-size:15px;
+    font-weight:700
+}
+
+/* đăng nhập */
+.overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(68,43,21,.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+    padding:16px
+}
+.login-card{
+    background:var(--paper);
+    border-radius:20px;
+    border-top:4px solid var(--gold);
+    padding:32px 30px 26px;
+    width:min(400px,100%);
+    box-shadow:0 20px 50px rgba(68,43,21,.3);
+    display:flex;
+    flex-direction:column;
+    gap:12px
+}
+.login-logo{
+    width:150px;
+    margin:0 auto
+}
+.login-card h1{
+    margin:0;
+    text-align:center;
+    font-size:22px;
+    color:var(--brown)
+}
+.login-card .muted{
+    font-size:13px;
+    text-align:center
+}
+.login-card input{
+    height:46px;
+    padding:0 14px;
+    font-size:15px;
+    border:2px solid var(--line);
+    border-radius:12px;
+    background:#fff;
+    font-family:inherit
+}
+.login-card input:focus,.search:focus{
+    outline:0;
+    border-color:var(--gold);
+    box-shadow:0 0 0 4px rgba(221,155,75,.22)
+}
+.err{
+    color:var(--red);
+    font-size:13px;
+    min-height:18px;
+    margin:0;
+    text-align:center
+}
+
+/* trang chính */
+main{
+    max-width:1280px;
+    margin:0 auto;
+    padding:26px 24px 56px
+}
+.head{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-end;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:20px;
+    scroll-margin-top:80px
+}
+.head h1{
+    margin:8px 0 0;
+    font-size:30px;
+    color:var(--brown)
+}
+.head-actions{
+    display:flex;
+    align-items:center;
+    gap:10px
+}
+.eyebrow{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:.08em;
+    color:var(--orange);
+    background:#fbe9d7;
+    padding:5px 12px;
+    border-radius:999px
+}
+.pill{
+    display:inline-block;
+    font-size:12px;
+    font-weight:700;
+    padding:4px 12px;
+    border-radius:999px;
+    background:#efe6da;
+    color:#5a3d24;
+    white-space:nowrap
+}
+.pill.ok{
+    background:var(--teal-bg);
+    color:#1f6b5b
+}
+.pill.play{
+    background:#fbe9d7;
+    color:var(--orange)
+}
+.pill.bad{
+    background:#fbe3e0;
+    color:var(--red)
+}
+
+.stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(210px,1fr));
+    gap:14px;
+    margin-bottom:22px
+}
+.stat{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:16px 18px;
+    display:flex;
+    flex-direction:column;
+    gap:2px
+}
+.stat .lbl{
+    font-size:13px;
+    color:var(--muted)
+}
+.stat b{
+    font-size:32px;
+    color:var(--brown);
+    line-height:1.2
+}
+.stat small{
+    font-size:12px;
+    color:var(--muted)
+}
+
+.cols{
+    display:grid;
+    grid-template-columns:1fr 330px;
+    gap:20px;
+    align-items:start
+}
+.col-main{
+    display:flex;
+    flex-direction:column;
+    gap:20px;
+    min-width:0
+}
+.panel{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:18px 18px 12px;
+    scroll-margin-top:80px
+}
+.panel-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+    flex-wrap:wrap
+}
+.panel-head h2{
+    margin:0;
+    font-size:18px;
+    color:var(--brown);
+    margin-right:auto
+}
+.search{
+    width:240px;
+    max-width:100%;
+    padding:8px 12px;
+    font-size:14px;
+    border:2px solid var(--line);
+    border-radius:10px;
+    background:#fff;
+    font-family:inherit
+}
+
+.table-wrap{
+    overflow-x:auto
+}
+table{
+    width:100%;
+    border-collapse:collapse
+}
+th{
+    text-align:left;
+    font-size:12px;
+    letter-spacing:.04em;
+    color:var(--orange);
+    padding:8px 10px;
+    border-bottom:2px solid var(--gold);
+    white-space:nowrap
+}
+td{
+    padding:11px 10px;
+    border-bottom:1px solid #eee3d3;
+    font-size:14px;
+    vertical-align:middle
+}
+td.act{
+    text-align:right;
+    white-space:nowrap
+}
+td.act button+button{
+    margin-left:6px
+}
+tr:last-child td{
+    border-bottom:0
+}
+.cell-main{
+    font-weight:600;
+    color:var(--brown)
+}
+.cell-sub{
+    font-size:12px;
+    color:var(--muted)
+}
+.who-cell{
+    display:flex;
+    align-items:center;
+    gap:10px
+}
+.av{
+    width:34px;
+    height:34px;
+    border-radius:50%;
+    background:var(--gold);
+    color:#fff;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex:0 0 auto
+}
+.empty{
+    text-align:center;
+    color:var(--muted);
+    padding:22px 0
+}
+
+.logs ul{
+    list-style:none;
+    margin:0;
+    padding:0;
+    max-height:640px;
+    overflow-y:auto
+}
+.logs li{
+    display:flex;
+    gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid #eee3d3;
+    font-size:13px
+}
+.logs li:last-child{
+    border-bottom:0
+}
+.logs time{
+    color:var(--muted);
+    flex:0 0 58px;
+    font-variant-numeric:tabular-nums
+}
+
+#toast{
+    position:fixed;
+    bottom:24px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#333;
+    color:#fff;
+    padding:10px 20px;
+    border-radius:20px;
+    z-index:30;
+    font-size:14px
+}
+
+/* Tab: Tổng quan (tất cả) / Phòng chơi / Người chơi / Nhật ký */
+main[data-view="rooms"] .cols,main[data-view="players"] .cols,main[data-view="logs"] .cols{
+    grid-template-columns:1fr
+}
+main[data-view="rooms"] #sec-players,main[data-view="rooms"] #sec-logs{
+    display:none
+}
+main[data-view="players"] #sec-rooms,main[data-view="players"] #sec-logs{
+    display:none
+}
+main[data-view="logs"] .col-main{
+    display:none
+}
+main[data-view="logs"] .logs ul{
+    max-height:none
+}
+main:not([data-view="overview"]) .head{
+    display:none
+}
+
+@media(max-width:980px){
+    .cols{
+        grid-template-columns:1fr
+    }
+    .top{
+        padding:10px 14px;
+        flex-wrap:wrap
+    }
+    .top nav{
+        order:5;
+        width:100%;
+        margin:0;
+        overflow-x:auto
+    }
+    main{
+        padding:18px 14px 40px
+    }
+}

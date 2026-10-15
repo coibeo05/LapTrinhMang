@@ -1,212 +1,369 @@
 <!DOCTYPE html>
 <html lang="vi">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>QUIZ - Vòng chơi</title>
-<link rel="icon" type="image/png" href="img/favicon.png">
-<link rel="stylesheet" href="css/style.css?v=12">
-</head>
-<body>
-<header>
-  <span id="conn" class="dot" title="Trạng thái kết nối"></span><img class="brand-logo" src="img/logo.png" alt="QUIZ" title="QUIZ">
-  <span id="userInfo" style="margin-left:12px;color:#cbd5e1;font-size:0.9em"></span>
-  <span id="score"></span>
-  <button id="btnLeave" class="danger hidden">Thoát Trận</button>
-  <div id="userAvatarContainer" class="avatar-wrap hidden" title="Hồ sơ tài khoản">
-    <div id="userAvatar" class="avatar-circle">?</div>
-  </div>
-</header>
-<main>
-  <section id="login" class="screen auth-card">
-    <img class="auth-logo-img" src="img/logo.png" alt="QUIZ">
-    <h1>Đăng nhập</h1>
-    <p class="auth-sub">Chào mừng trở lại! Vào phòng và thi đấu thôi.</p>
-    <label>Tên đăng nhập <input type="text" id="userName" maxlength="30" placeholder="Nhập tên đăng nhập"></label>
-    <label>Mật khẩu <input type="password" id="userPass" maxlength="50" placeholder="Nhập mật khẩu"></label>
-    <div class="actions vertical">
-      <button id="btnLogin" class="btn-primary">Đăng nhập</button>
-      <div class="auth-divider"><span>hoặc</span></div>
-      <div class="gsi-wrap">
-      <button id="btnGoogleLogin" class="btn-google" type="button">
-        <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
-        Tiếp tục với Google
-      </button>
-        <div id="gsiBtn"></div>
-      </div>
-    </div>
-    <div class="auth-switch">
-      <span>Chưa có tài khoản?</span>
-      <button id="btnSwitchRegister" class="link-btn" type="button">Đăng ký ngay</button>
-    </div>
-  </section>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>QUIZ - Vòng chơi</title>
+        <link rel="icon" type="image/png" href="img/favicon.png">
+        <link rel="stylesheet" href="css/style.css?v=13">
+        <link rel="stylesheet" href="css/figma.css?v=3">
+    </head>
+    <body>
+        <header>
+            <span id="conn" class="dot" title="Trạng thái kết nối"></span>
+            <div class="brand">
+                <img class="brand-logo" src="img/logo.png" alt="QUIZ">
+                <div class="brand-text"><b>Lập trình mạng</b><small>Kết nối kiến thức, chơi cùng nhau</small></div>
+            </div>
+            <nav id="mainNav" class="hidden">
+                <button id="navHome" class="nav-btn active" type="button">Phòng chơi</button>
+                <button id="navSets" class="nav-btn" type="button">Bộ câu hỏi</button>
+                <button id="navRank" class="nav-btn" type="button">Bảng xếp hạng</button>
+            </nav>
+            <span class="spacer"></span>
+            <span id="score"></span>
+            <button id="btnLeave" class="danger hidden">Thoát Trận</button>
+            <div id="userAvatarContainer" class="user-chip hidden" title="Hồ sơ tài khoản">
+                <div id="userAvatar" class="avatar-circle">?</div>
+                <div class="user-text"><b id="userInfo"></b><small id="userSub"></small></div>
+                <span class="chev">&#9662;</span>
+            </div>
+        </header>
+        <main>
+            <section id="login" class="screen page">
+                <div class="login-grid">
+                    <div class="hero">
+                        <span class="eyebrow">QUIZ · LẬP TRÌNH MẠNG</span>
+                        <h1>Kết nối đồng đội.<br>Bứt phá kiến thức!</h1>
+                        <p>Thi đấu quiz trực tuyến theo thời gian thực: tạo phòng, rủ bạn bè, trả lời nhanh và đúng để leo bảng xếp hạng.</p>
+                        <div class="net" aria-hidden="true">
+                            <span class="chip c1">TCP</span><span class="chip c2">UDP</span>
+                            <span class="core">Máy chủ<br>QUIZ</span>
+                            <span class="chip c3">Socket</span><span class="chip c4">HTTP</span>
+                        </div>
+                        <ul class="perks">
+                            <li>Server chấm điểm, không tin dữ liệu từ máy người chơi</li>
+                            <li>5 dạng câu hỏi: chọn 1, chọn nhiều, sắp xếp, nhập chữ, đoán số</li>
+                            <li>Chat ngay trong phòng chờ và trong lúc thi</li>
+                        </ul>
+                    </div>
+                    <div class="auth-card">
+                        <img class="auth-logo-img" src="img/logo.png" alt="QUIZ">
+                        <h1>Đăng nhập</h1>
+                        <p class="auth-sub">Chào mừng trở lại! Vào phòng và thi đấu thôi.</p>
+                        <label>Tên đăng nhập <input type="text" id="userName" maxlength="30" placeholder="Nhập tên đăng nhập"></label>
+                        <label>Mật khẩu <input type="password" id="userPass" maxlength="50" placeholder="Nhập mật khẩu"></label>
+                        <div class="actions vertical">
+                            <button id="btnLogin" class="btn-primary">Đăng nhập</button>
+                            <div class="auth-divider"><span>hoặc</span></div>
+                            <div class="gsi-wrap">
+                                <button id="btnGoogleLogin" class="btn-google" type="button">
+                                    <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/></svg>
+                                    Tiếp tục với Google
+                                </button>
+                                <div id="gsiBtn"></div>
+                            </div>
+                        </div>
+                        <div class="auth-switch">
+                            <span>Chưa có tài khoản?</span>
+                            <button id="btnSwitchRegister" class="link-btn" type="button">Đăng ký ngay</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-  <section id="register" class="screen auth-card hidden">
-    <img class="auth-logo-img" src="img/logo.png" alt="QUIZ">
-    <h1>Tạo tài khoản</h1>
-    <p class="auth-sub">Chỉ mất vài giây để bắt đầu chơi.</p>
-    <label>Tên đăng nhập <input type="text" id="regUserName" maxlength="30" placeholder="Chọn tên đăng nhập (3-30 ký tự)"></label>
-    <label>Mật khẩu <input type="password" id="regUserPass" maxlength="50" placeholder="Mật khẩu (tối thiểu 4 ký tự)"></label>
-    <label>Nhập lại mật khẩu <input type="password" id="regUserPassConfirm" maxlength="50" placeholder="Nhập lại mật khẩu"></label>
-    <div class="actions vertical">
-      <button id="btnDoRegister" class="btn-primary">Tạo tài khoản</button>
-      <button id="btnBackToLogin" class="alt hidden" type="button">Quay lại</button>
-    </div>
-    <div class="auth-switch">
-      <span>Đã có tài khoản?</span>
-      <button id="btnSwitchLogin" class="link-btn" type="button">Đăng nhập</button>
-    </div>
-  </section>
+            <section id="register" class="screen auth-card hidden">
+                <img class="auth-logo-img" src="img/logo.png" alt="QUIZ">
+                <h1>Tạo tài khoản</h1>
+                <p class="auth-sub">Chỉ mất vài giây để bắt đầu chơi.</p>
+                <label>Tên đăng nhập <input type="text" id="regUserName" maxlength="30" placeholder="Chọn tên đăng nhập (3-30 ký tự)"></label>
+                <label>Mật khẩu <input type="password" id="regUserPass" maxlength="50" placeholder="Mật khẩu (tối thiểu 4 ký tự)"></label>
+                <label>Nhập lại mật khẩu <input type="password" id="regUserPassConfirm" maxlength="50" placeholder="Nhập lại mật khẩu"></label>
+                <div class="actions vertical">
+                    <button id="btnDoRegister" class="btn-primary">Tạo tài khoản</button>
+                    <button id="btnBackToLogin" class="alt hidden" type="button">Quay lại</button>
+                </div>
+                <div class="auth-switch">
+                    <span>Đã có tài khoản?</span>
+                    <button id="btnSwitchLogin" class="link-btn" type="button">Đăng nhập</button>
+                </div>
+            </section>
 
-  <section id="home" class="screen hidden">
-    <img class="home-logo" src="img/logo.png" alt="QUIZ">
-    <div class="actions">
-      <button id="btnNewRoom">Tạo phòng</button>
-      <button id="btnNewSet" class="alt">Tạo kho câu hỏi</button>
-      <button id="btnRefresh" class="alt">Làm mới</button>
-    </div>
-    <div class="actions">
-      <input type="text" id="joinCode" maxlength="6" placeholder="Nhập mã phòng" style="text-transform:uppercase">
-      <button id="btnJoinCode">Vào bằng mã</button>
-    </div>
-    <h2>Phòng đang mở</h2>
-    <div id="roomList"></div>
-    <h2>Các bộ câu hỏi hiện có</h2>
-    <div id="setList"></div>
-  </section>
+            <section id="home" class="screen page hidden">
+                <div class="page-head">
+                    <div>
+                        <div class="eyebrow">SẢNH CHƠI · LẬP TRÌNH MẠNG</div>
+                        <h1>Chọn phòng. Kết nối. Bắt đầu!</h1>
+                        <p class="muted">Một vòng quiz nhỏ, một bước tiến lớn trong Lập trình mạng.</p>
+                    </div>
+                    <button id="btnNewRoom" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Tạo phòng mới</button>
+                </div>
+                <div class="top-row">
+                    <div class="join-card">
+                        <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg> Có mã phòng từ bạn bè?</h3>
+                        <div class="join-row">
+                            <input type="text" id="joinCode" maxlength="6" placeholder="Nhập mã phòng · VD: P7K2M" style="text-transform:uppercase">
+                            <button id="btnJoinCode" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg> Vào bằng mã</button>
+                        </div>
+                        <small class="hint">Mã gồm 5 ký tự. Bạn có thể tham gia phòng công khai hoặc phòng riêng bằng mã.</small>
+                    </div>
+                    <div class="info-card">
+                        <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg> Lập trình mạng</h3>
+                        <p>TCP/UDP · Socket · Client-server · HTTP</p>
+                        <div class="info-foot"><b id="setSummary">0 câu hỏi · 0 bộ</b><a id="linkSets" href="#">Xem bộ câu hỏi &rarr;</a></div>
+                    </div>
+                </div>
+                <div class="rooms-head">
+                    <h2>Phòng đang mở</h2><span id="roomTotal" class="count">0 phòng</span>
+                    <div class="chips" id="roomTabs">
+                        <button type="button" data-f="all" class="on">Tất cả</button>
+                        <button type="button" data-f="wait">Đang chờ</button>
+                        <button type="button" data-f="play">Đang chơi</button>
+                    </div>
+                    <span class="grow"></span>
+                    <label class="search-box"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input type="search" id="roomSearch" placeholder="Tìm phòng hoặc chủ phòng"></label>
+                    <button id="btnRefresh" class="alt refresh" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg> Làm mới</button>
+                </div>
+                <div id="roomList" class="room-grid"></div>
+            </section>
 
-  <section id="createSet" class="screen editor hidden">
-    <div class="qe-top">
-      <button id="btnSaveSet" class="qe-done">Xong</button>
-      <input type="text" id="setName" class="qe-name" maxlength="60" placeholder="Tên bộ câu hỏi (ví dụ: Ôn tập Lập trình mạng)">
-      <button id="btnCancelSet" class="qe-cancel">Hủy</button>
-    </div>
-    <div class="qe-main" id="qeMain"></div>
-    <div class="qe-strip">
-      <div id="slides"></div>
-      <span class="lbl">Thêm câu →</span>
-      <button id="btnAddSlide" class="qe-plus" title="Thêm câu">+</button>
-    </div>
-  </section>
+            <section id="sets" class="screen page hidden">
+                <div class="page-head">
+                    <div>
+                        <div class="eyebrow">THƯ VIỆN · LẬP TRÌNH MẠNG</div>
+                        <h1>Bộ câu hỏi</h1>
+                        <p class="muted">Bộ có sẵn của hệ thống và bộ riêng do bạn tạo. Bộ riêng chỉ mình bạn nhìn thấy.</p>
+                    </div>
+                    <button id="btnNewSet" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Tạo bộ câu hỏi</button>
+                </div>
+                <div id="setList" class="set-grid"></div>
+            </section>
 
-  <section id="createRoom" class="screen hidden">
-    <h2>Tạo phòng</h2>
-    <label>Tên phòng <input type="text" id="roomName" maxlength="40" value="Phòng của tôi"></label>
-    <label>Bộ câu hỏi <select id="roomSet"></select></label>
-    <label>Số câu hỏi <input type="number" id="roomCount" min="1" value="5"></label>
-    <label><input type="checkbox" id="roomHidden"> Ẩn phòng (chỉ vào được bằng mã)</label>
-    <p class="hint">Cần ít nhất 2 người chơi để bắt đầu trận (có thể thêm bot ở phòng chờ).</p>
-    <div class="actions">
-      <button id="btnCreateRoom">Tạo phòng</button>
-      <button id="btnCancelRoom" class="alt">Hủy</button>
-    </div>
-  </section>
+            <section id="leaderboard" class="screen page hidden">
+                <div class="page-head">
+                    <div>
+                        <div class="eyebrow">BẢNG VÀNG · LẬP TRÌNH MẠNG</div>
+                        <h1>Bảng xếp hạng</h1>
+                        <p class="muted">Xếp theo số trận đã chơi và chuỗi thắng liên tiếp. Hạng của bạn luôn hiện ở cuối bảng.</p>
+                    </div>
+                </div>
+                <div class="rooms-head">
+                    <div class="chips" id="rankTabs">
+                        <button type="button" data-r="played" class="on">Theo số trận chơi</button>
+                        <button type="button" data-r="streak">Theo chuỗi thắng</button>
+                    </div>
+                    <span class="grow"></span>
+                    <label class="search-box"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input type="search" id="rankSearch" placeholder="Tìm người chơi"></label>
+                    <button id="btnRankRefresh" class="alt refresh" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg> Làm mới</button>
+                </div>
+                <div class="panel lb-panel"><table id="lbTable"></table></div>
+                <div id="lbMe" class="lb-me"></div>
+            </section>
 
-  <section id="waiting" class="screen hidden">
-    <h2 id="roomTitle"></h2>
-    <p id="roomInfo"></p>
-    <h3>Người chơi trong phòng</h3>
-    <ul id="playerList"></ul>
-    <div id="chatLog"></div>
-    <div class="actions"><input type="text" id="chatIn" maxlength="200" placeholder="Nhắn tin trong phòng..."><button id="btnChat" class="alt">Gửi</button></div>
-    <div class="actions">
-      <button id="btnAddBot" class="alt">Thêm bot</button>
-      <button id="btnStart">Bắt đầu</button>
-      <button id="btnLeaveRoom" class="alt">Rời phòng</button>
-    </div>
-  </section>
+            <section id="createSet" class="screen editor hidden">
+                <div class="qe-top">
+                    <button id="btnSaveSet" class="qe-done">Xong</button>
+                    <input type="text" id="setName" class="qe-name" maxlength="60" placeholder="Tên bộ câu hỏi (ví dụ: Ôn tập Lập trình mạng)">
+                    <button id="btnCancelSet" class="qe-cancel">Hủy</button>
+                </div>
+                <div class="qe-main" id="qeMain"></div>
+                <div class="qe-strip">
+                    <div id="slides"></div>
+                    <span class="lbl">Thêm câu →</span>
+                    <button id="btnAddSlide" class="qe-plus" title="Thêm câu">+</button>
+                </div>
+            </section>
 
-  <section id="intro" class="screen hidden">
-    <h2 id="introTitle"></h2>
-    <p id="introText"></p>
-    <div id="introCount"></div>
-  </section>
 
-  <section id="question" class="screen hidden">
-    <div class="bar"><div id="barFill"></div></div>
-    <div class="row"><span id="qMeta"></span><span id="timeLeft"></span></div>
-    <h2 id="qText"></h2>
-    <div id="qMedia"></div>
-    <div id="qBody"></div>
-    <div id="qFeedback"></div>
-    <button id="btnSubmit">Gửi</button>
-  </section>
+            <section id="waiting" class="screen page hidden">
+                <div class="page-head">
+                    <div>
+                        <div class="eyebrow">PHÒNG CHƠI / SẢNH CHỜ</div>
+                        <h1 id="roomTitle"></h1>
+                        <p id="roomInfo" class="muted">Đồng đội đã có mặt. Sẵn sàng cho thử thách Lập trình mạng?</p>
+                    </div>
+                    <div class="head-actions">
+                        <button id="btnInvite" class="invite" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/></svg> Mời bạn bè</button>
+                        <button id="btnLeaveRoom" class="outline" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg> Rời phòng</button>
+                    </div>
+                </div>
+                <div class="code-bar">
+                    <span class="lbl">MÃ PHÒNG</span><b id="roomCode">-----</b>
+                    <button id="btnCopyCode" class="copy" type="button" title="Sao chép mã"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></button>
+                    <span class="hint">Chia sẻ mã này để bạn bè cùng vào chơi</span>
+                    <span id="roomBadge" class="badge-pill">Công khai · Đang chờ</span>
+                </div>
+                <div class="wait-grid">
+                    <div class="wait-main">
+                        <div class="panel big">
+                            <div class="panel-head">
+                                <h3>Đồng đội trong phòng</h3>
+                                <div class="pills"><span id="roomPlayerCount" class="count">0/8 người chơi</span><span id="roomReadyCount" class="count teal">0/0 sẵn sàng</span></div>
+                            </div>
+                            <div id="playerGrid" class="player-grid"></div>
+                            <button id="slotBox" class="slot-box" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/></svg> <span id="slotText"></span></button>
+                        </div>
+                        <div class="panel big">
+                            <div class="panel-head"><h3>Cài đặt trận đấu</h3><span id="settingsNote" class="note-orange">Chỉ chủ phòng được chỉnh sửa</span></div>
+                            <div class="sf">
+                                <label class="sfield"><span>BỘ CÂU HỎI</span><select id="setBo"></select></label>
+                                <label class="sfield"><span>SỐ CÂU HỎI</span><select id="setSoCau"></select></label>
+                                <label class="sfield"><span>THỜI GIAN MỖI CÂU</span><select id="setGiay"></select></label>
+                                <label class="sfield"><span>SỐ NGƯỜI TỐI ĐA</span><select id="setToiDa"></select></label>
+                                <label class="sfield"><span>CHẾ ĐỘ PHÒNG</span><select id="setCheDo"></select></label>
+                                <label class="sfield"><span>TÊN PHÒNG</span><input type="text" id="roomNameIn" maxlength="40"></label>
+                            </div>
+                            <small class="hint">Chủ đề: TCP/UDP, Socket, Client-server, HTTP · Đáp án đúng và tốc độ quyết định điểm số.</small>
+                        </div>
+                        <div class="panel start-panel">
+                            <div class="st-text"><b id="startTitle"></b><small id="startHint"></small></div>
+                            <div class="start-actions">
+                                <button id="btnReady" class="alt hidden" type="button"></button>
+                                <button id="btnAddBot" class="alt" type="button">+ Thêm bot</button>
+                                <button id="btnStart" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg> Bắt đầu trận đấu</button>
+                            </div>
+                        </div>
+                    </div>
+                    <aside class="wait-side">
+                        <div class="panel big rules">
+                            <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg> Chơi vui, học thật</h3>
+                            <ol class="rule-list">
+                                <li><b>01</b><span>Chọn đáp án trước khi hết giờ.</span></li>
+                                <li><b>02</b><span>Trả lời đúng và nhanh để ghi điểm (1000 → 400).</span></li>
+                                <li><b>03</b><span>Chat cổ vũ, đừng bật mí đáp án!</span></li>
+                            </ol>
+                            <small class="hint">Rời phòng giữa trận sẽ không được tính điểm của trận đó.</small>
+                        </div>
+                        <div class="panel big chat-panel">
+                            <div class="panel-head"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat phòng</h3><span id="chatOnline" class="count teal">0 trực tuyến</span></div>
+                            <div id="chatLog" class="chat-log"></div>
+                            <div class="chat-row"><input type="text" id="chatIn" maxlength="200" placeholder="Nhắn với cả phòng..."><button id="btnChat" class="cta" type="button">Gửi</button></div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
 
-  <section id="ranking" class="screen hidden">
-    <h2>Bảng xếp hạng tạm thời</h2>
-    <table id="rankTable"></table>
-  </section>
+            <section id="intro" class="screen hidden">
+                <h2 id="introTitle"></h2>
+                <p id="introText"></p>
+                <div id="introCount"></div>
+            </section>
 
-  <section id="end" class="screen hidden">
-    <h2 id="endTitle"></h2>
-    <p id="endText"></p>
-    <table id="finalTable"></table>
-    <button id="btnHome">Về màn hình chính</button>
-  </section>
-</main>
+            <section id="question" class="screen page hidden">
+                <div class="play-grid">
+                    <div class="q-card">
+                        <div class="q-top">
+                            <span id="qMeta" class="pill"></span>
+                            <span id="qNum" class="qnum"></span>
+                            <div class="timer-ring"><span id="timeLeft"></span></div>
+                        </div>
+                        <div class="bar"><div id="barFill"></div></div>
+                        <h2 id="qText"></h2>
+                        <div id="qMedia"></div>
+                        <div id="qBody"></div>
+                        <div id="qFeedback"></div>
+                        <button id="btnSubmit" class="cta">Gửi đáp án</button>
+                    </div>
+                    <aside class="play-side">
+                        <div class="panel"><h3>Cuộc đua điểm số</h3><div id="sideRank"></div></div>
+                        <div class="panel chat-panel">
+                            <h3>Chat trong trận</h3>
+                            <div id="chatLog2" class="chat-log"></div>
+                            <div class="chat-row"><input type="text" id="chatIn2" maxlength="200" placeholder="Nhắn tin..."><button id="btnChat2" class="alt" type="button">Gửi</button></div>
+                        </div>
+                    </aside>
+                </div>
+            </section>
 
-<div id="profileModal" class="overlay hidden">
-  <div class="box profile-box">
-    <div class="profile-header">
-      <div class="profile-avatar-large" id="modalAvatar">?</div>
-      <div class="profile-title">
-        <h3 id="modalUsername" style="margin:0 0 4px 0">Tên tài khoản</h3>
-        <span id="modalAccountMeta" class="profile-meta">ID: 0</span>
-      </div>
-      <button id="btnCloseProfile" class="close-x" type="button" title="Đóng">&times;</button>
-    </div>
-    <div class="profile-tabs">
-      <button class="ptab active" data-tab="tabInfo" type="button">Thông tin</button>
-      <button class="ptab" data-tab="tabHistory" type="button">Lịch sử đấu</button>
-      <button class="ptab" data-tab="tabEdit" type="button">Sửa thông tin</button>
-    </div>
-    <div class="profile-content">
-      <div id="tabInfo" class="ptab-pane">
-        <div class="stat-grid">
-          <div class="stat-card"><span class="stat-val" id="infoScore">0</span><span class="stat-lbl">Điểm tích lũy</span></div>
-          <div class="stat-card"><span class="stat-val" id="infoWins">0</span><span class="stat-lbl">Trận thắng</span></div>
-          <div class="stat-card"><span class="stat-val" id="infoMatches">0</span><span class="stat-lbl">Số trận</span></div>
-          <div class="stat-card"><span class="stat-val" id="infoWinRate">0%</span><span class="stat-lbl">Tỷ lệ thắng</span></div>
+            <section id="ranking" class="screen hidden">
+                <h2>Bảng xếp hạng tạm thời</h2>
+                <table id="rankTable"></table>
+            </section>
+
+            <section id="end" class="screen page hidden">
+                <div id="endHero" class="end-hero">
+                    <div>
+                        <span class="eyebrow">KẾT QUẢ TRẬN</span>
+                        <h1 id="endTitle"></h1>
+                        <p id="endText" class="muted"></p>
+                    </div>
+                    <div class="end-rank"><small>Hạng của bạn</small><b id="endRank">#1</b></div>
+                </div>
+                <div class="end-grid">
+                    <div class="panel"><h3>Bảng xếp hạng</h3><table id="finalTable"></table></div>
+                    <div id="endStats" class="stat-col">
+                        <div class="stat"><b id="stScore">-</b><small>Điểm trong trận</small></div>
+                        <div class="stat"><b id="stPct">-</b><small>Tỉ lệ đúng</small></div>
+                        <div class="stat"><b id="stOk">-</b><small>Câu đúng</small></div>
+                        <div class="stat"><b id="stTime">-</b><small>Giây trả lời TB</small></div>
+                    </div>
+                </div>
+                <div class="actions"><button id="btnHome" class="cta">Về danh sách phòng</button></div>
+            </section>
+        </main>
+
+        <div id="profileModal" class="overlay hidden">
+            <div class="box profile-box">
+                <div class="profile-header">
+                    <div class="profile-avatar-large" id="modalAvatar">?</div>
+                    <div class="profile-title">
+                        <h3 id="modalUsername" style="margin:0 0 4px 0">Tên tài khoản</h3>
+                        <span id="modalAccountMeta" class="profile-meta">ID: 0</span>
+                    </div>
+                    <button id="btnCloseProfile" class="close-x" type="button" title="Đóng">&times;</button>
+                </div>
+                <div class="profile-tabs">
+                    <button class="ptab active" data-tab="tabInfo" type="button">Thông tin</button>
+                    <button class="ptab" data-tab="tabHistory" type="button">Lịch sử đấu</button>
+                    <button class="ptab" data-tab="tabEdit" type="button">Sửa thông tin</button>
+                </div>
+                <div class="profile-content">
+                    <div id="tabInfo" class="ptab-pane">
+                        <div class="stat-grid">
+                            <div class="stat-card"><span class="stat-val" id="infoScore">0</span><span class="stat-lbl">Điểm tích lũy</span></div>
+                            <div class="stat-card"><span class="stat-val" id="infoWins">0</span><span class="stat-lbl">Trận thắng</span></div>
+                            <div class="stat-card"><span class="stat-val" id="infoMatches">0</span><span class="stat-lbl">Số trận</span></div>
+                            <div class="stat-card"><span class="stat-val" id="infoWinRate">0%</span><span class="stat-lbl">Tỷ lệ thắng</span></div>
+                        </div>
+                        <p class="profile-joined">Ngày tạo: <b id="infoJoined">-</b></p>
+                    </div>
+                    <div id="tabHistory" class="ptab-pane hidden">
+                        <div id="historyList" class="history-list">
+                            <p class="hint" style="text-align:center">Đang tải lịch sử đấu...</p>
+                        </div>
+                    </div>
+                    <div id="tabEdit" class="ptab-pane hidden">
+                        <h4 style="margin:0 0 10px 0">Đổi mật khẩu</h4>
+                        <label>Mật khẩu hiện tại <input type="password" id="oldPass" placeholder="Nhập mật khẩu hiện tại"></label>
+                        <label>Mật khẩu mới <input type="password" id="newPass" placeholder="Mật khẩu mới (tối thiểu 4 ký tự)"></label>
+                        <label>Nhập lại mật khẩu mới <input type="password" id="newPassConfirm" placeholder="Xác nhận mật khẩu mới"></label>
+                        <div class="actions">
+                            <button id="btnSavePassword" class="btn-primary" type="button">Lưu mật khẩu mới</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-footer">
+                    <button id="btnLogout" class="danger" type="button">Đăng xuất</button>
+                </div>
+            </div>
         </div>
-        <p class="profile-joined">Ngày tạo: <b id="infoJoined">-</b></p>
-      </div>
-      <div id="tabHistory" class="ptab-pane hidden">
-        <div id="historyList" class="history-list">
-          <p class="hint" style="text-align:center">Đang tải lịch sử đấu...</p>
-        </div>
-      </div>
-      <div id="tabEdit" class="ptab-pane hidden">
-        <h4 style="margin:0 0 10px 0">Đổi mật khẩu</h4>
-        <label>Mật khẩu hiện tại <input type="password" id="oldPass" placeholder="Nhập mật khẩu hiện tại"></label>
-        <label>Mật khẩu mới <input type="password" id="newPass" placeholder="Mật khẩu mới (tối thiểu 4 ký tự)"></label>
-        <label>Nhập lại mật khẩu mới <input type="password" id="newPassConfirm" placeholder="Xác nhận mật khẩu mới"></label>
-        <div class="actions">
-          <button id="btnSavePassword" class="btn-primary" type="button">Lưu mật khẩu mới</button>
-        </div>
-      </div>
-    </div>
-    <div class="profile-footer">
-      <button id="btnLogout" class="danger" type="button">Đăng xuất</button>
-    </div>
-  </div>
-</div>
 
-<div id="confirm" class="overlay hidden">
-  <div class="box">
-    <p>Bạn có chắc chắn muốn thoát trận?</p>
-    <button id="btnYes" class="danger">Xác nhận</button>
-    <button id="btnNo">Ở lại</button>
-  </div>
-</div>
-<div id="typePicker" class="overlay hidden">
-  <div class="box picker">
-    <h3 style="margin:0">Chọn dạng câu hỏi</h3>
-    <div id="pickGrid"></div>
-    <button id="btnClosePicker" class="alt">Đóng</button>
-  </div>
-</div>
-<div id="toast" class="hidden"></div>
-<script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="js/app.js?v=12"></script>
-</body>
+        <div id="confirm" class="overlay hidden">
+            <div class="box">
+                <p>Bạn có chắc chắn muốn thoát trận?</p>
+                <button id="btnYes" class="danger">Xác nhận</button>
+                <button id="btnNo">Ở lại</button>
+            </div>
+        </div>
+        <div id="typePicker" class="overlay hidden">
+            <div class="box picker">
+                <h3 style="margin:0">Chọn dạng câu hỏi</h3>
+                <div id="pickGrid"></div>
+                <button id="btnClosePicker" class="alt">Đóng</button>
+            </div>
+        </div>
+        <div id="toast" class="hidden"></div>
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script src="js/app.js?v=15"></script>
+    </body>
 </html>

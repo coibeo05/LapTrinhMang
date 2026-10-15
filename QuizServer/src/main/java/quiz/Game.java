@@ -77,9 +77,11 @@ public class Game {
             JsonObject in = Json.createReader(new StringReader(msg)).readObject();
             String type = in.getString("type");
             JsonObject p = (in.get("payload") instanceof JsonObject) ? in.getJsonObject("payload") : JsonValue.EMPTY_JSON_OBJECT;
+            if (type.equals("PONG")) { PingService.onPong(s, p); return; }
             if (type.equals("REGISTER")) { register(s, p); return; }
             if (type.equals("LOGIN")) { login(s, p); return; }
             if (type.equals("GOOGLE_LOGIN")) { googleLogin(s, p); return; }
+            if (type.startsWith("ADMIN_")) { AdminService.handle(type, p, s); return; }
             Player me = me(s);
             if (me == null) { error(s, "Bạn chưa đăng nhập"); return; }
             Room r = me.room;
@@ -87,6 +89,7 @@ public class Game {
                 case "GET_PROFILE" -> getProfile(s);
                 case "CHANGE_PASSWORD" -> changePassword(s, p);
                 case "GET_HISTORY" -> getHistory(s);
+                case "GET_RANKING" -> getRanking(s, me);
                 case "LOGOUT" -> logout(s);
                 case "LIST_SETS" -> sendSets(s);
                 case "CREATE_SET" -> createSet(s, p);
@@ -97,6 +100,9 @@ public class Game {
                     if (t == null) error(s, "Phòng không tồn tại"); else if (r == null) t.join(me);
                 }
                 case "ADD_BOT" -> { if (r != null) r.addBot(me); }
+                case "UPDATE_ROOM" -> { if (r != null) updateRoom(s, me, r, p); }
+                case "SET_READY" -> { if (r != null) r.setReady(me, p.getBoolean("ready", true)); }
+                case "KICK_PLAYER" -> { if (r != null) r.kickBy(me, p.getInt("accountId", 0)); }
                 case "START_MATCH" -> { if (r != null) r.start(me); }
                 case "REQUEST_QUESTION" -> { if (r != null) r.request(me); }
                 case "SUBMIT_ANSWER" -> { if (r != null) r.submit(me, p); }
@@ -140,6 +146,7 @@ public class Game {
                     .add("tongDiem", acc.getTongDiem())
                     .add("tongTranThang", acc.getTongTranThang())
                     .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "");
+            quiz.util.ActivityLog.add(acc.getUsername() + " đăng nhập");
             send(s, "LOGIN_OK", payload);
         } else {
             error(s, res.payload().getString("lyDo", "Đăng nhập thất bại"));
@@ -154,10 +161,23 @@ public class Game {
             if (old != null && old.room != null) old.room.leave(old);
             Player me = new Player(acc.getAccountId(), acc.getUsername(), s, acc);
             s.p = me;
+            quiz.util.ActivityLog.add(acc.getUsername() + " đăng nhập (Google)");
             send(s, "LOGIN_OK", res.payload());
         } else {
             error(s, res.payload().getString("lyDo", "Đăng nhập Google thất bại"));
         }
+    }
+
+    /** Chủ phòng đổi cài đặt phòng chờ. Bộ câu hỏi mới chỉ được chọn trong các bộ người này nhìn thấy. */
+    private void updateRoom(Conn s, Player me, Room r, JsonObject p) {
+        QSet newSet = null;
+        if (p.containsKey("setId")) {
+            int setId = p.getInt("setId", -1);
+            newSet = SETS.stream().filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(s.id))).findFirst().orElse(null);
+            if (newSet == null) { error(s, "Bộ câu hỏi không tồn tại"); return; }
+        }
+        String err = r.configure(me, p, newSet);
+        if (err != null) error(s, err);
     }
 
     private void changePassword(Conn s, JsonObject p) {
@@ -175,9 +195,39 @@ public class Game {
         send(s, res.type(), res.payload());
     }
 
+    /** Bảng xếp hạng toàn hệ thống: theo số trận chơi và theo chuỗi thắng liên tiếp, kèm vị trí của người đang xem. */
+    private void getRanking(Conn s, Player me) {
+        List<quiz.db.RankingDAO.Stat> all = new quiz.db.RankingDAO().loadAll();
+        List<quiz.db.RankingDAO.Row> byPlayed = quiz.db.RankingDAO.sortByPlayed(all, Integer.MAX_VALUE);
+        List<quiz.db.RankingDAO.Row> byStreak = quiz.db.RankingDAO.sortByStreak(all, Integer.MAX_VALUE);
+        quiz.db.RankingDAO.Stat mine = all.stream().filter(x -> x.accountId() == me.id).findFirst()
+                .orElse(new quiz.db.RankingDAO.Stat(me.id, me.ten, 0, 0, 0, 0));
+        JsonObjectBuilder m = Json.createObjectBuilder()
+                .add("soTran", mine.played()).add("soThang", mine.wins())
+                .add("chuoiHienTai", mine.curStreak()).add("chuoiDaiNhat", mine.bestStreak())
+                .add("hangTran", quiz.db.RankingDAO.rankOf(byPlayed, me.id))
+                .add("hangChuoi", quiz.db.RankingDAO.rankOf(byStreak, me.id));
+        send(s, "RANKING_DATA", Json.createObjectBuilder()
+                .add("byPlayed", rankRows(byPlayed.subList(0, Math.min(50, byPlayed.size()))))
+                .add("byStreak", rankRows(byStreak.subList(0, Math.min(50, byStreak.size()))))
+                .add("me", m));
+    }
+
+    private static JsonArrayBuilder rankRows(List<quiz.db.RankingDAO.Row> rows) {
+        JsonArrayBuilder a = Json.createArrayBuilder();
+        for (quiz.db.RankingDAO.Row r : rows) {
+            quiz.db.RankingDAO.Stat x = r.stat();
+            a.add(Json.createObjectBuilder().add("hang", r.hang()).add("accountId", x.accountId()).add("ten", x.username())
+                    .add("soTran", x.played()).add("soThang", x.wins())
+                    .add("chuoiHienTai", x.curStreak()).add("chuoiDaiNhat", x.bestStreak()));
+        }
+        return a;
+    }
+
     private void logout(Conn s) {
         Player p = me(s);
         if (p != null && p.room != null) p.room.leave(p);
+        if (p != null) quiz.util.ActivityLog.add(p.ten + " đăng xuất");
         s.p = null;
         if (s.session != null) {
             quiz.net.SessionManager.removeSession(s.session.getSessionId());
