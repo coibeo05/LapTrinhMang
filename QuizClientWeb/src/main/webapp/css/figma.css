@@ -1,4 +1,3 @@
-/* ===== Giao diện theo thiết kế Figma (nạp SAU style.css, chỉ ghi đè bố cục) ===== */
 :root{
     --brown:#442b15;
     --orange:#a74713;
@@ -226,13 +225,17 @@ header #score{
 }
 
 /* ---- đăng nhập ---- */
-.login-grid{
-    display:grid;
-    grid-template-columns:1.1fr .9fr;
-    gap:48px;
-    align-items:center;
-    min-height:66vh
+
+.login-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 440px);
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    min-height: auto;
 }
+
 .hero h1{
     font-size:clamp(32px,4.4vw,52px);
     line-height:1.08;
@@ -1481,5 +1484,70 @@ button.slot-box:hover:not(:disabled){
     }
     #qBody[data-kind="BUTTONS"],#qBody[data-kind="CHECKBOXES"]{
         grid-template-columns:1fr
+    }
+}
+
+/* ---- đang khôi phục phiên ---- */
+.resume-box{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:18px;
+    padding:90px 0;
+    color:var(--muted);
+    font-size:16px
+}
+.spinner{
+    width:42px;
+    height:42px;
+    border-radius:50%;
+    border:4px solid #eadfce;
+    border-top-color:var(--orange);
+    animation:spin .9s linear infinite
+}
+@keyframes spin{
+    to{
+        transform:rotate(360deg)
+    }
+}
+
+/* Căn giữa màn hình đăng nhập */
+#login:not(.hidden) {
+    min-height: calc(100vh - 98px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+/* Giới hạn chiều rộng khung đăng nhập */
+#login .login-grid {
+    width: 100%;
+    max-width: 440px;
+    margin: 0 auto;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+}
+
+/* Giao diện thẻ đăng nhập */
+#login .auth-card {
+    width: 100%;
+    max-width: 440px;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+#login.hidden {
+    display: none !important;
+}
+
+@media (max-width: 480px) {
+    #login:not(.hidden) {
+        padding: 16px;
+    }
+
+    #login .auth-card {
+        padding: 24px 20px;
     }
 }

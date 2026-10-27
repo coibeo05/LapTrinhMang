@@ -14,6 +14,28 @@ const GUIDE = {
 };
 
 const $ = id => document.getElementById(id);
+// Mã khôi phục phiên: giữ trong sessionStorage của TAB (tải lại trang vẫn còn, đóng tab thì mất)
+const RESUME_KEY = 'quizResume';
+const PAGES = ['home', 'sets', 'leaderboard'];   // các trang có thể quay lại bằng nút Back của trình duyệt
+const tokenGet = () => {
+    try {
+        return sessionStorage.getItem(RESUME_KEY) || '';
+    } catch (e) {
+        return '';
+    }
+};
+const tokenSet = t => {
+    try {
+        sessionStorage.setItem(RESUME_KEY, t);
+    } catch (e) { /* chế độ riêng tư */
+    }
+};
+const tokenClear = () => {
+    try {
+        sessionStorage.removeItem(RESUME_KEY);
+    } catch (e) { /* bỏ qua */
+    }
+};
 const initials = n => {
     const w = String(n || '?').trim().split(/\s+/);
     return (w.length > 1 ? w[0][0] + w[w.length - 1][0] : String(n || '?').slice(0, 2)).toUpperCase();
@@ -49,6 +71,11 @@ function connect() {
     ws = new WebSocket(url);
     ws.onopen = () => {
         $('conn').className = 'dot on';
+        const t = tokenGet();
+        if (t && !currentUser) {
+            resuming = true;
+            send('RESUME', {token: t});
+        }   // tải lại trang: vào lại bằng mã, không cần nhập mật khẩu
     };
     ws.onclose = () => {
         $('conn').className = 'dot';
@@ -70,6 +97,9 @@ function show(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.toggle('hidden', s.id !== id));
     $('btnLeave').classList.toggle('hidden', !['intro', 'question', 'ranking'].includes(id));
     $('mainNav').classList.toggle('inmatch', ['intro', 'question', 'ranking'].includes(id));
+    curScreen = id;
+    if (currentUser && PAGES.includes(id) && !(history.state && history.state.p === id))
+        history.pushState({p: id}, '', '#' + id);
     const NAV = {navHome: ['home', 'waiting', 'end'], navSets: ['sets', 'createSet'], navRank: ['leaderboard']};
     Object.keys(NAV).forEach(k => $(k).classList.toggle('active', NAV[k].includes(id)));
     document.querySelector('main').classList.toggle('wide', id === 'createSet');
@@ -162,9 +192,29 @@ function handle(m) {
             $('infoScore').textContent = p.tongDiem || 0;
             $('infoWins').textContent = p.tongTranThang || 0;
             $('infoJoined').textContent = p.ngayTao || 'Hôm nay';
-            toast('Đăng nhập thành công: ' + (p.username || p.ten || ''));
+            if (p.resumeToken)
+                tokenSet(p.resumeToken);
+            toast(p.daKhoiPhuc ? (p.daRoiPhong ? 'Đã khôi phục phiên. Bạn đã rời phòng vì tải lại trang.' : 'Đã khôi phục phiên đăng nhập')
+                    : 'Đăng nhập thành công: ' + (p.username || p.ten || ''));
             $('mainNav').classList.remove('hidden');
-            goHome();
+            {
+                // thay mục lịch sử hiện tại (thay vì thêm mới) để nút Back không bao giờ quay về màn hình đăng nhập
+                const want = (resuming ? location.hash : '').replace('#', ''), pg = PAGES.includes(want) ? want : 'home';
+                resuming = false;
+                history.replaceState({p: pg}, '', '#' + pg);
+                if (pg === 'sets')
+                    goSets();
+                else if (pg === 'leaderboard')
+                    goRank();
+                else
+                    goHome();
+            }
+            break;
+        case 'RESUME_FAIL':
+            resuming = false;
+            tokenClear();
+            show('login');
+            toast(p.lyDo || 'Phiên đăng nhập đã hết hạn, hãy đăng nhập lại');
             break;
         case 'LOGIN_FAIL':
             toast(p.thongBao || p.lyDo || 'Đăng nhập thất bại');
@@ -542,6 +592,7 @@ function renderSideRank() {
 let sets = [];
 let lastRank = [], roomPlayers = [], allRooms = [], roomFilter = 'all';
 let lbData = null, lbTab = 'played', lastRoom = null;
+let resuming = false, curScreen = 'login', roomsLoaded = false;
 
 function goHome() {
     $('score').textContent = '';
@@ -549,6 +600,9 @@ function goHome() {
     $('chatLog2').innerHTML = '';
     lastRank = [];
     lastRoom = null;
+    allRooms = [];
+    roomsLoaded = false;
+    drawRooms();   // không hiện danh sách cũ (có thể còn phòng vừa rời) trong lúc chờ danh sách mới
     show('home');
     send('LIST_SETS');
     send('LIST_ROOMS');
@@ -564,6 +618,7 @@ function goRank() {
 }
 function renderRooms(list) {
     allRooms = list;
+    roomsLoaded = true;
     drawRooms();
 }
 
@@ -582,7 +637,7 @@ function drawRooms() {
         return !kw || has(r.ten) || has(r.roomId) || has(r.tenBo) || has(r.chuPhong);
     });
     if (!rows.length) {
-        box.appendChild(el('p', 'hint', allRooms.length ? 'Không có phòng khớp bộ lọc.' : 'Chưa có phòng nào đang mở. Hãy tạo phòng mới!'));
+        box.appendChild(el('p', 'hint', allRooms.length ? 'Không có phòng khớp bộ lọc.' : (roomsLoaded ? 'Chưa có phòng nào đang mở. Hãy tạo phòng mới!' : 'Đang tải danh sách phòng...')));
         return;
     }
     rows.forEach(r => {
@@ -1069,6 +1124,8 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
     function doLogout() {
         CFG.accountId = 0;
         currentUser = null;
+        tokenClear();
+        resuming = false;
         $('mainNav').classList.add('hidden');
         $('userAvatarContainer').classList.add('hidden');
         $('profileModal').classList.add('hidden');
@@ -1256,9 +1313,17 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
     $('slotBox').onclick = invite;
 
 // Thanh điều hướng, lọc/tìm phòng, sao chép mã, chat trong trận
-    $('navHome').onclick = () => goHome();
-    $('navSets').onclick = () => goSets();
-    $('navRank').onclick = () => goRank();
+    const navTo = fn => {
+        if (curScreen === 'waiting') {   // đang ở phòng chờ: chuyển trang đồng nghĩa với rời phòng
+            if (!window.confirm('Bạn đang ở trong phòng chờ. Rời phòng để chuyển trang?'))
+                return;
+            send('LEAVE_ROOM');
+        }
+        fn();
+    };
+    $('navHome').onclick = () => navTo(goHome);
+    $('navSets').onclick = () => navTo(goSets);
+    $('navRank').onclick = () => navTo(goRank);
     $('linkSets').onclick = e => {
         e.preventDefault();
         goSets();
@@ -1291,6 +1356,39 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
             $('btnChat2').click();
     };
 
+// Nút Quay lại của trình duyệt: đi giữa các trang chính; đang trong phòng/trận thì chặn để khỏi thoát nhầm
+    window.addEventListener('popstate', e => {
+        if (!currentUser)
+            return;
+        if (['waiting', 'intro', 'question', 'ranking'].includes(curScreen)) {
+            history.pushState({p: curScreen}, '', '#' + curScreen);
+            toast('Bạn đang trong phòng: hãy dùng nút "Rời phòng" hoặc "Thoát Trận" để thoát.');
+            return;
+        }
+        const pg = e.state && e.state.p;
+        if (pg === 'sets')
+            goSets();
+        else if (pg === 'leaderboard')
+            goRank();
+        else
+            goHome();
+    });
+
+// Danh sách phòng ở sảnh tự làm mới mỗi 5 giây (phòng mới mở/đã đóng hiện ra mà không cần bấm Làm mới)
+    setInterval(() => {
+        if (currentUser && curScreen === 'home')
+            send('LIST_ROOMS');
+    }, 5000);
+
+// Khởi động: có mã khôi phục thì chờ khôi phục (không nháy màn hình đăng nhập), quá 7 giây không được thì hiện đăng nhập
+    resuming = !!tokenGet();
     connect();
-    show('login');
+    show(resuming ? 'resuming' : 'login');
+    if (resuming)
+        setTimeout(() => {
+            if (resuming && !currentUser) {
+                resuming = false;
+                show('login');
+            }
+        }, 7000);
 })();

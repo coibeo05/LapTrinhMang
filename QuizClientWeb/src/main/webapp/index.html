@@ -6,14 +6,13 @@
         <title>QUIZ - Vòng chơi</title>
         <link rel="icon" type="image/png" href="img/favicon.png">
         <link rel="stylesheet" href="css/style.css?v=13">
-        <link rel="stylesheet" href="css/figma.css?v=3">
+        <link rel="stylesheet" href="css/figma.css?v=4">
     </head>
     <body>
         <header>
             <span id="conn" class="dot" title="Trạng thái kết nối"></span>
             <div class="brand">
                 <img class="brand-logo" src="img/logo.png" alt="QUIZ">
-                <div class="brand-text"><b>Lập trình mạng</b><small>Kết nối kiến thức, chơi cùng nhau</small></div>
             </div>
             <nav id="mainNav" class="hidden">
                 <button id="navHome" class="nav-btn active" type="button">Phòng chơi</button>
@@ -30,23 +29,8 @@
             </div>
         </header>
         <main>
-            <section id="login" class="screen page">
+            <section id="login" class="screen page hidden">
                 <div class="login-grid">
-                    <div class="hero">
-                        <span class="eyebrow">QUIZ · LẬP TRÌNH MẠNG</span>
-                        <h1>Kết nối đồng đội.<br>Bứt phá kiến thức!</h1>
-                        <p>Thi đấu quiz trực tuyến theo thời gian thực: tạo phòng, rủ bạn bè, trả lời nhanh và đúng để leo bảng xếp hạng.</p>
-                        <div class="net" aria-hidden="true">
-                            <span class="chip c1">TCP</span><span class="chip c2">UDP</span>
-                            <span class="core">Máy chủ<br>QUIZ</span>
-                            <span class="chip c3">Socket</span><span class="chip c4">HTTP</span>
-                        </div>
-                        <ul class="perks">
-                            <li>Server chấm điểm, không tin dữ liệu từ máy người chơi</li>
-                            <li>5 dạng câu hỏi: chọn 1, chọn nhiều, sắp xếp, nhập chữ, đoán số</li>
-                            <li>Chat ngay trong phòng chờ và trong lúc thi</li>
-                        </ul>
-                    </div>
                     <div class="auth-card">
                         <img class="auth-logo-img" src="img/logo.png" alt="QUIZ">
                         <h1>Đăng nhập</h1>
@@ -72,6 +56,10 @@
                 </div>
             </section>
 
+            <section id="resuming" class="screen page hidden">
+                <div class="resume-box"><div class="spinner" aria-hidden="true"></div><p>Đang khôi phục phiên đăng nhập...</p></div>
+            </section>
+
             <section id="register" class="screen auth-card hidden">
                 <img class="auth-logo-img" src="img/logo.png" alt="QUIZ">
                 <h1>Tạo tài khoản</h1>
@@ -92,9 +80,9 @@
             <section id="home" class="screen page hidden">
                 <div class="page-head">
                     <div>
-                        <div class="eyebrow">SẢNH CHƠI · LẬP TRÌNH MẠNG</div>
-                        <h1>Chọn phòng. Kết nối. Bắt đầu!</h1>
-                        <p class="muted">Một vòng quiz nhỏ, một bước tiến lớn trong Lập trình mạng.</p>
+                        <div class="eyebrow">SẢNH CHƠI · QUIZ</div>
+                        <h1>Chọn phòng, sẵn sàng thi đấu nào!</h1>
+                        <p class="muted">Cùng nhau chinh phục thử thách và ghi tên lên bảng xếp hạng!</p>
                     </div>
                     <button id="btnNewRoom" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Tạo phòng mới</button>
                 </div>
@@ -130,7 +118,7 @@
             <section id="sets" class="screen page hidden">
                 <div class="page-head">
                     <div>
-                        <div class="eyebrow">THƯ VIỆN · LẬP TRÌNH MẠNG</div>
+                        <div class="eyebrow">THƯ VIỆN · QUIZ</div>
                         <h1>Bộ câu hỏi</h1>
                         <p class="muted">Bộ có sẵn của hệ thống và bộ riêng do bạn tạo. Bộ riêng chỉ mình bạn nhìn thấy.</p>
                     </div>
@@ -142,7 +130,7 @@
             <section id="leaderboard" class="screen page hidden">
                 <div class="page-head">
                     <div>
-                        <div class="eyebrow">BẢNG VÀNG · LẬP TRÌNH MẠNG</div>
+                        <div class="eyebrow">BẢNG VÀNG · QUIZ</div>
                         <h1>Bảng xếp hạng</h1>
                         <p class="muted">Xếp theo số trận đã chơi và chuỗi thắng liên tiếp. Hạng của bạn luôn hiện ở cuối bảng.</p>
                     </div>
@@ -180,7 +168,7 @@
                     <div>
                         <div class="eyebrow">PHÒNG CHƠI / SẢNH CHỜ</div>
                         <h1 id="roomTitle"></h1>
-                        <p id="roomInfo" class="muted">Đồng đội đã có mặt. Sẵn sàng cho thử thách Lập trình mạng?</p>
+                        <p id="roomInfo" class="muted">Đồng đội đã có mặt. Hãy sẵn sàng cho thử thách nào?</p>
                     </div>
                     <div class="head-actions">
                         <button id="btnInvite" class="invite" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/></svg> Mời bạn bè</button>
@@ -364,6 +352,6 @@
         </div>
         <div id="toast" class="hidden"></div>
         <script src="https://accounts.google.com/gsi/client" async defer></script>
-        <script src="js/app.js?v=15"></script>
+        <script src="js/app.js?v=16"></script>
     </body>
 </html>
