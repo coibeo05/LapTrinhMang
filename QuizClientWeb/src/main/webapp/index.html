@@ -120,9 +120,19 @@
                     <div>
                         <div class="eyebrow">THƯ VIỆN · QUIZ</div>
                         <h1>Bộ câu hỏi</h1>
-                        <p class="muted">Bộ có sẵn của hệ thống và bộ riêng do bạn tạo. Bộ riêng chỉ mình bạn nhìn thấy.</p>
+                        <p class="muted">Bộ có sẵn của hệ thống, bộ do cộng đồng chia sẻ và bộ riêng do bạn tạo.</p>
                     </div>
                     <button id="btnNewSet" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Tạo bộ câu hỏi</button>
+                </div>
+                <div class="rooms-head" style="margin-bottom: 22px;">
+                    <div class="chips" id="setTabs">
+                        <button type="button" data-f="all" class="on">Tất cả</button>
+                        <button type="button" data-f="mine">Của tôi</button>
+                        <button type="button" data-f="public">Cộng đồng</button>
+                        <button type="button" data-f="system">Hệ thống</button>
+                    </div>
+                    <span class="grow"></span>
+                    <label class="search-box"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input type="search" id="setSearch" placeholder="Tìm bộ câu hỏi hoặc tác giả"></label>
                 </div>
                 <div id="setList" class="set-grid"></div>
             </section>
@@ -152,6 +162,10 @@
                 <div class="qe-top">
                     <button id="btnSaveSet" class="qe-done">Xong</button>
                     <input type="text" id="setName" class="qe-name" maxlength="60" placeholder="Tên bộ câu hỏi (ví dụ: Ôn tập Lập trình mạng)">
+                    <label class="qe-pub-toggle" title="Bật để tất cả người chơi cùng thấy và chọn bộ câu hỏi này">
+                        <input type="checkbox" id="setPublic" checked>
+                        <span class="pub-badge-text">🌐 Công khai cho mọi người</span>
+                    </label>
                     <button id="btnCancelSet" class="qe-cancel">Hủy</button>
                 </div>
                 <div class="qe-main" id="qeMain"></div>

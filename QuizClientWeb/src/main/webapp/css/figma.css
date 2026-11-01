@@ -1551,3 +1551,69 @@ button.slot-box:hover:not(:disabled){
         padding: 24px 20px;
     }
 }
+
+/* ---- Chế độ công khai / riêng tư cho bộ câu hỏi ---- */
+.qe-pub-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--brown, #3e2723);
+    background: #fbf5ee;
+    padding: 7px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    border: 1px solid var(--line, #e9d4af);
+    transition: all .15s ease;
+}
+.qe-pub-toggle:hover {
+    background: #f4ede3;
+    border-color: #d8c29b;
+}
+.qe-pub-toggle input[type="checkbox"] {
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    accent-color: #2e7d32;
+    margin: 0;
+}
+.set-badges {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.st.pub {
+    background: var(--teal-bg, #e8f5e9);
+    color: var(--teal-d, #1b5e20);
+}
+.st.priv {
+    background: #f5f5f5;
+    color: #616161;
+}
+.st.comm {
+    background: #e3f2fd;
+    color: #0d47a1;
+}
+.btn-pub-toggle {
+    cursor: pointer;
+    border: none;
+    outline: none;
+    font-family: inherit;
+    transition: transform .12s, filter .12s;
+}
+.btn-pub-toggle:hover {
+    transform: scale(1.05);
+    filter: brightness(0.95);
+}
+.rc-author {
+    color: var(--muted, #795548);
+    font-size: 14px;
+    margin-top: 4px;
+    font-weight: 500;
+}
+

@@ -25,10 +25,18 @@ public class Game {
     private static final int ME = 1;
     private static final List<Q> BANK = new ArrayList<>();   // câu mẫu, mỗi dạng một câu
 
-    /** Bộ câu hỏi. owner = null là bộ có sẵn của hệ thống; khác null là bộ riêng của người tạo. */
-    record QSet(int setId, String ten, String owner, List<Q> qs) {}
+    /** Bộ câu hỏi. ownerConn = null là bộ có sẵn của hệ thống; khác null là bộ riêng của người tạo. isPublic = true là công khai cho mọi người. */
+    record QSet(int setId, String ten, String ownerConn, int ownerAccountId, String authorName, boolean isPublic, List<Q> qs) {
+        public String owner() { return ownerConn; }
+    }
     private static final List<QSet> SETS = new CopyOnWriteArrayList<>();
     private static final AtomicInteger SET_SEQ = new AtomicInteger(0);
+
+    private static boolean isOwner(QSet x, Conn s) {
+        if (x.ownerConn() != null && x.ownerConn().equals(s.id)) return true;
+        if (s.p != null && x.ownerAccountId() > 0 && x.ownerAccountId() == s.p.id) return true;
+        return false;
+    }
 
     private static JsonArray opts(String... kv) {
         JsonArrayBuilder a = Json.createArrayBuilder();
@@ -60,7 +68,7 @@ public class Game {
         BANK.add(new Q(5, "RANGE", "Đỉnh Everest cao khoảng bao nhiêu mét?",
                 Json.createObjectBuilder().add("min", 0).add("max", 10000).add("step", 50).build(),
                 Json.createValue(8849), 100));
-        SETS.add(new QSet(SET_SEQ.incrementAndGet(), "Kiến thức chung (mẫu)", null, new ArrayList<>(BANK)));
+        SETS.add(new QSet(SET_SEQ.incrementAndGet(), "Kiến thức chung (mẫu)", null, 0, "Hệ thống", true, new ArrayList<>(BANK)));
     }
 
     private static final AtomicInteger IDS = new AtomicInteger(0);
@@ -93,6 +101,7 @@ public class Game {
                 case "LOGOUT" -> logout(s);
                 case "LIST_SETS" -> sendSets(s);
                 case "CREATE_SET" -> createSet(s, p);
+                case "TOGGLE_SET_PUBLIC" -> toggleSetPublic(s, p);
                 case "LIST_ROOMS" -> send(s, "ROOM_LIST", Json.createObjectBuilder().add("rooms", Room.list()));
                 case "CREATE_ROOM" -> createRoom(s, me, p);
                 case "JOIN_ROOM" -> {
@@ -173,7 +182,7 @@ public class Game {
         QSet newSet = null;
         if (p.containsKey("setId")) {
             int setId = p.getInt("setId", -1);
-            newSet = SETS.stream().filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(s.id))).findFirst().orElse(null);
+            newSet = SETS.stream().filter(x -> x.setId() == setId && (x.isPublic() || isOwner(x, s))).findFirst().orElse(null);
             if (newSet == null) { error(s, "Bộ câu hỏi không tồn tại"); return; }
         }
         String err = r.configure(me, p, newSet);
@@ -351,15 +360,22 @@ public class Game {
     private void sendSets(Conn s) {
         JsonArrayBuilder a = Json.createArrayBuilder();
         for (QSet x : SETS) {
-            if (x.owner() != null && !x.owner().equals(s.id)) continue;   // bộ riêng chỉ chủ sở hữu thấy
-            a.add(Json.createObjectBuilder().add("setId", x.setId()).add("ten", x.ten())
-                    .add("soCau", x.qs().size()).add("laCuaToi", x.owner() != null));
+            boolean laCuaToi = isOwner(x, s);
+            if (!x.isPublic() && !laCuaToi) continue;   // bộ riêng tư chỉ chủ sở hữu thấy
+            a.add(Json.createObjectBuilder()
+                    .add("setId", x.setId())
+                    .add("ten", x.ten())
+                    .add("soCau", x.qs().size())
+                    .add("laCuaToi", laCuaToi)
+                    .add("congKhai", x.isPublic())
+                    .add("tacGia", x.authorName() != null ? x.authorName() : "Hệ thống"));
         }
         send(s, "SET_LIST", Json.createObjectBuilder().add("sets", a));
     }
 
     private void createSet(Conn s, JsonObject p) {
         String ten = p.getString("ten", "").trim();
+        boolean congKhai = p.getBoolean("congKhai", false);
         JsonValue lv = p.get("cauHoi");
         JsonArray list = lv instanceof JsonArray arr ? arr : JsonValue.EMPTY_JSON_ARRAY;
         if (ten.isEmpty() || ten.length() > 60) { error(s, "Tên bộ câu hỏi không hợp lệ (1-60 ký tự)"); return; }
@@ -375,15 +391,38 @@ public class Game {
             }
         }
         if (qs.isEmpty()) { error(s, "Bộ câu hỏi cần ít nhất 1 câu"); return; }
-        SETS.add(new QSet(SET_SEQ.incrementAndGet(), ten, s.id, qs));
-        send(s, "SET_CREATED", Json.createObjectBuilder().add("ten", ten));
+        Player me = me(s);
+        int accId = me != null ? me.id : 0;
+        String author = me != null ? me.ten : "Người dùng";
+        SETS.add(new QSet(SET_SEQ.incrementAndGet(), ten, s.id, accId, author, congKhai, qs));
+        send(s, "SET_CREATED", Json.createObjectBuilder().add("ten", ten).add("congKhai", congKhai));
+    }
+
+    private void toggleSetPublic(Conn s, JsonObject p) {
+        int setId = p.getInt("setId", -1);
+        for (int i = 0; i < SETS.size(); i++) {
+            QSet x = SETS.get(i);
+            if (x.setId() == setId) {
+                if (!isOwner(x, s)) {
+                    error(s, "Bạn không phải chủ sở hữu bộ câu hỏi này");
+                    return;
+                }
+                boolean newPub = p.containsKey("congKhai") ? p.getBoolean("congKhai") : !x.isPublic();
+                QSet updated = new QSet(x.setId(), x.ten(), x.ownerConn(), x.ownerAccountId(), x.authorName(), newPub, x.qs());
+                SETS.set(i, updated);
+                send(s, "SET_UPDATED", Json.createObjectBuilder().add("setId", setId).add("congKhai", newPub));
+                sendSets(s);
+                return;
+            }
+        }
+        error(s, "Không tìm thấy bộ câu hỏi");
     }
 
     private void createRoom(Conn s, Player me, JsonObject p) {
         if (me.room != null) return;
         int setId = p.getInt("setId", -1);
         QSet set = SETS.stream()
-                .filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(s.id)))
+                .filter(x -> x.setId() == setId && (x.isPublic() || isOwner(x, s)))
                 .findFirst().orElse(null);
         if (set == null) { error(s, "Bộ câu hỏi không tồn tại"); return; }
         String ten = p.getString("ten", "").trim();

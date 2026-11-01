@@ -172,8 +172,11 @@ function handle(m) {
             renderLeaderboard();
             break;
         case 'SET_CREATED':
-            toast('Đã lưu bộ câu hỏi "' + p.ten + '"');
+            toast('Đã lưu bộ câu hỏi "' + p.ten + '"' + (p.congKhai ? ' (Công khai)' : ' (Riêng tư)'));
             goSets();
+            break;
+        case 'SET_UPDATED':
+            toast(p.congKhai ? 'Đã công khai bộ câu hỏi cho mọi người!' : 'Đã chuyển bộ câu hỏi sang riêng tư!');
             break;
         case 'LOGIN_OK':
         case 'LOGIN_SUCCESS':
@@ -662,27 +665,86 @@ function drawRooms() {
     });
 }
 
+let setFilter = 'all';
+
 function renderSets(list) {
     sets = list;
     const total = list.reduce((a, x) => a + x.soCau, 0);
-    $('setSummary').textContent = total + ' câu hỏi · ' + list.length + ' bộ';
+    if ($('setSummary'))
+        $('setSummary').textContent = total + ' câu hỏi · ' + list.length + ' bộ';
+    drawSets();
+}
+
+function drawSets() {
     const box = $('setList');
+    if (!box)
+        return;
     box.innerHTML = '';
-    if (!list.length) {
-        box.appendChild(el('p', 'hint', 'Chưa có bộ câu hỏi nào.'));
+    const kw = ($('setSearch') && $('setSearch').value || '').trim().toLowerCase();
+
+    const filtered = (sets || []).filter(x => {
+        if (setFilter === 'mine' && !x.laCuaToi)
+            return false;
+        if (setFilter === 'public' && (!x.congKhai || x.tacGia === 'Hệ thống'))
+            return false;
+        if (setFilter === 'system' && x.tacGia !== 'Hệ thống')
+            return false;
+
+        if (kw) {
+            const matchName = String(x.ten || '').toLowerCase().includes(kw);
+            const matchAuthor = String(x.tacGia || '').toLowerCase().includes(kw);
+            if (!matchName && !matchAuthor)
+                return false;
+        }
+        return true;
+    });
+
+    if (!filtered.length) {
+        box.appendChild(el('p', 'hint', 'Không tìm thấy bộ câu hỏi nào.'));
         return;
     }
-    list.forEach((x, i) => {
+    filtered.forEach((x, i) => {
         const c = el('div', 'setc'), top = el('div', 'rc-top'), ico = el('span', 'rc-ico');
         ico.style.background = TONES[i % TONES.length][0];
         ico.style.color = TONES[i % TONES.length][1];
         ico.innerHTML = svgIcon('book', 24);
-        top.append(ico, el('span', 'badge' + (x.laCuaToi ? ' mine' : ''), x.laCuaToi ? 'Của tôi' : 'Hệ thống'));
+
+        const badges = el('div', 'set-badges');
+        if (x.laCuaToi) {
+            badges.appendChild(el('span', 'badge mine', 'Của tôi'));
+            const btnToggle = el('button', 'st btn-pub-toggle ' + (x.congKhai ? 'pub' : 'priv'), x.congKhai ? '🌐 Công khai' : '🔒 Riêng tư');
+            btnToggle.type = 'button';
+            btnToggle.title = x.congKhai ? 'Đang công khai cho mọi người. Bấm để chuyển sang Riêng tư' : 'Đang riêng tư (chỉ mình bạn). Bấm để công khai cho mọi người';
+            btnToggle.onclick = (e) => {
+                e.stopPropagation();
+                send('TOGGLE_SET_PUBLIC', {setId: x.setId, congKhai: !x.congKhai});
+            };
+            badges.appendChild(btnToggle);
+        } else {
+            if (x.tacGia === 'Hệ thống') {
+                badges.appendChild(el('span', 'st wait', 'Hệ thống'));
+            } else {
+                badges.appendChild(el('span', 'st comm', '🌐 Cộng đồng'));
+            }
+        }
+        top.append(ico, badges);
+
+        const title = el('div', 'rc-title', x.ten);
+        let authorText = '';
+        if (x.laCuaToi) {
+            authorText = 'Người tạo: Bạn · ' + (x.congKhai ? 'Công khai cho mọi người' : 'Chỉ mình bạn thấy');
+        } else if (x.tacGia && x.tacGia !== 'Hệ thống') {
+            authorText = 'Tác giả: ' + x.tacGia + ' (Cộng đồng chia sẻ)';
+        } else {
+            authorText = 'Bộ câu hỏi chuẩn hệ thống';
+        }
+        const author = el('div', 'rc-author', authorText);
+
         const b = el('button', 'small', 'Tạo phòng với bộ này');
         b.onclick = () => openCreateRoom(x.setId);
         const foot = el('div', 'rc-foot');
         foot.append(el('span', 'rc-count', x.soCau + ' câu hỏi'), b);
-        c.append(top, el('div', 'rc-title', x.ten), foot);
+        c.append(top, title, author, foot);
         box.appendChild(c);
     });
 }
@@ -1056,6 +1118,8 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
         slides = [];
         cur = 0;
         $('setName').value = '';
+        if ($('setPublic'))
+            $('setPublic').checked = true;
         strip();
         form();
         show('createSet');
@@ -1082,7 +1146,8 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
                 return toast('Câu ' + (i + 1) + ': ' + p);
             }
         }
-        send('CREATE_SET', {ten, cauHoi: slides.map(payload)});
+        const congKhai = $('setPublic') ? $('setPublic').checked : false;
+        send('CREATE_SET', {ten, congKhai, cauHoi: slides.map(payload)});
     };
     function openCreateRoom(preSetId) {
         // Tạo phòng ngay với giá trị mặc định; chủ phòng chỉnh cài đặt ngay trong phòng chờ
@@ -1341,6 +1406,13 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
             drawRooms();
         });
     $('roomSearch').oninput = drawRooms;
+    document.querySelectorAll('#setTabs button').forEach(b => b.onclick = () => {
+            setFilter = b.dataset.f;
+            document.querySelectorAll('#setTabs button').forEach(x => x.classList.toggle('on', x === b));
+            drawSets();
+        });
+    if ($('setSearch'))
+        $('setSearch').oninput = drawSets;
     $('btnCopyCode').onclick = () => {
         const c = $('roomCode').textContent;
         (navigator.clipboard ? navigator.clipboard.writeText(c) : Promise.reject()).then(() => toast('Đã sao chép mã ' + c), () => toast('Mã phòng: ' + c));
