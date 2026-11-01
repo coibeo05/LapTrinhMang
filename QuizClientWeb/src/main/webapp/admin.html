@@ -14,6 +14,7 @@
                 <a href="#" data-view="overview" class="on">Tổng quan</a>
                 <a href="#" data-view="rooms">Phòng chơi</a>
                 <a href="#" data-view="players">Người chơi</a>
+                <a href="#" data-view="sets">Duyệt câu hỏi <span id="badgePending" class="nav-badge hidden">0</span></a>
                 <a href="#" data-view="logs">Nhật ký</a>
             </nav>
             <span class="spacer"></span>
@@ -48,6 +49,7 @@
             <section class="stats">
                 <div class="stat"><span class="lbl">Phòng đang mở</span><b id="stRooms">0</b><small id="stRoomsSub">0 đang thi đấu</small></div>
                 <div class="stat"><span class="lbl">Người chơi online</span><b id="stOnline">0</b><small id="stOnlineSub">0 trong phòng</small></div>
+                <div class="stat"><span class="lbl">Chờ duyệt công khai</span><b id="stPending" style="color:var(--orange)">0</b><small id="stPendingSub">0 bộ câu hỏi mới</small></div>
                 <div class="stat"><span class="lbl">Tải CPU (tiến trình)</span><b id="stCpu">0%</b><small id="stCpuSub">Bộ nhớ 0 MB</small></div>
                 <div class="stat"><span class="lbl">Độ trễ trung bình</span><b id="stPing">&mdash;</b><small id="stPingSub">Chưa có dữ liệu</small></div>
             </section>
@@ -81,6 +83,25 @@
                             </table>
                         </div>
                     </section>
+
+                    <section id="sec-sets" class="panel">
+                        <div class="panel-head">
+                            <h2>Duyệt bộ câu hỏi người dùng</h2>
+                            <span id="setCount" class="pill">0</span>
+                            <div class="chips" id="adminSetTabs">
+                                <button type="button" data-f="pending" class="on">Chờ duyệt (<span id="tabPendingCount">0</span>)</button>
+                                <button type="button" data-f="approved">Đã công khai</button>
+                                <button type="button" data-f="all">Tất cả</button>
+                            </div>
+                            <input id="setQ" class="search" type="search" placeholder="Tìm tên bộ, tác giả...">
+                        </div>
+                        <div class="table-wrap">
+                            <table id="setTable">
+                                <thead><tr><th>Bộ câu hỏi</th><th>Tác giả</th><th>Số câu</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </section>
                 </div>
 
                 <aside id="sec-logs" class="panel logs">
@@ -90,7 +111,25 @@
             </div>
         </main>
 
+        <div id="previewModal" class="overlay hidden">
+            <div class="modal-card">
+                <div class="modal-head">
+                    <div>
+                        <h2 id="modalSetTitle">Chi tiết bộ câu hỏi</h2>
+                        <p class="muted" id="modalSetMeta">Tác giả · Số câu hỏi</p>
+                    </div>
+                    <button id="btnCloseModal" class="close-x" type="button" title="Đóng">&times;</button>
+                </div>
+                <div id="modalQList" class="modal-body"></div>
+                <div class="modal-foot">
+                    <button id="btnModalApprove" class="primary" type="button">✓ Duyệt công khai</button>
+                    <button id="btnModalReject" class="warn" type="button">✕ Từ chối</button>
+                    <button id="btnModalClose" class="ghost" type="button">Đóng</button>
+                </div>
+            </div>
+        </div>
+
         <div id="toast" class="hidden"></div>
-        <script src="js/admin.js?v=3"></script>
+        <script src="js/admin.js?v=4"></script>
     </body>
 </html>

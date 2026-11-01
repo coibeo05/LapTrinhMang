@@ -25,12 +25,36 @@ public class Game {
     private static final int ME = 1;
     private static final List<Q> BANK = new ArrayList<>();   // câu mẫu, mỗi dạng một câu
 
-    /** Bộ câu hỏi. ownerConn = null là bộ có sẵn của hệ thống; khác null là bộ riêng của người tạo. isPublic = true là công khai cho mọi người. */
-    record QSet(int setId, String ten, String ownerConn, int ownerAccountId, String authorName, boolean isPublic, List<Q> qs) {
+    /** Bộ câu hỏi. ownerConn = null là bộ có sẵn của hệ thống; khác null là bộ riêng của người tạo.
+     * status: "APPROVED" (công khai cho mọi người), "PENDING" (chờ Admin duyệt), "PRIVATE" (riêng tư), "REJECTED" (từ chối).
+     * everApproved = true: đã từng được Admin duyệt công khai trước đó (nếu chuyển về riêng tư có thể mở lại ngay mà không cần duyệt lại).
+     */
+    public record QSet(int setId, String ten, String ownerConn, int ownerAccountId, String authorName, String status, boolean everApproved, String rejectReason, JsonArray rawJson, List<Q> qs) {
+        public boolean isPublic() { return "APPROVED".equals(status); }
+        public boolean isPending() { return "PENDING".equals(status); }
+        public boolean isRejected() { return "REJECTED".equals(status); }
+        public boolean wasApproved() { return everApproved; }
         public String owner() { return ownerConn; }
     }
     private static final List<QSet> SETS = new CopyOnWriteArrayList<>();
     private static final AtomicInteger SET_SEQ = new AtomicInteger(0);
+
+    public static List<QSet> getSets() { return SETS; }
+
+    public static QSet findSet(int setId) {
+        return SETS.stream().filter(x -> x.setId() == setId).findFirst().orElse(null);
+    }
+
+    public static boolean updateSetStatus(int setId, String newStatus, boolean everApproved, String rejectReason) {
+        for (int i = 0; i < SETS.size(); i++) {
+            QSet x = SETS.get(i);
+            if (x.setId() == setId) {
+                SETS.set(i, new QSet(x.setId(), x.ten(), x.ownerConn(), x.ownerAccountId(), x.authorName(), newStatus, everApproved, rejectReason, x.rawJson(), x.qs()));
+                return true;
+            }
+        }
+        return false;
+    }
 
     private static boolean isOwner(QSet x, Conn s) {
         if (x.ownerConn() != null && x.ownerConn().equals(s.id)) return true;
@@ -68,7 +92,7 @@ public class Game {
         BANK.add(new Q(5, "RANGE", "Đỉnh Everest cao khoảng bao nhiêu mét?",
                 Json.createObjectBuilder().add("min", 0).add("max", 10000).add("step", 50).build(),
                 Json.createValue(8849), 100));
-        SETS.add(new QSet(SET_SEQ.incrementAndGet(), "Kiến thức chung (mẫu)", null, 0, "Hệ thống", true, new ArrayList<>(BANK)));
+        SETS.add(new QSet(SET_SEQ.incrementAndGet(), "Kiến thức chung (mẫu)", null, 0, "Hệ thống", "APPROVED", true, null, null, new ArrayList<>(BANK)));
     }
 
     private static final AtomicInteger IDS = new AtomicInteger(0);
@@ -101,6 +125,7 @@ public class Game {
                 case "LOGOUT" -> logout(s);
                 case "LIST_SETS" -> sendSets(s);
                 case "CREATE_SET" -> createSet(s, p);
+                case "UPDATE_SET" -> updateSet(s, p);
                 case "TOGGLE_SET_PUBLIC" -> toggleSetPublic(s, p);
                 case "LIST_ROOMS" -> send(s, "ROOM_LIST", Json.createObjectBuilder().add("rooms", Room.list()));
                 case "CREATE_ROOM" -> createRoom(s, me, p);
@@ -361,14 +386,23 @@ public class Game {
         JsonArrayBuilder a = Json.createArrayBuilder();
         for (QSet x : SETS) {
             boolean laCuaToi = isOwner(x, s);
-            if (!x.isPublic() && !laCuaToi) continue;   // bộ riêng tư chỉ chủ sở hữu thấy
-            a.add(Json.createObjectBuilder()
+            if (!x.isPublic() && !laCuaToi) continue;   // bộ riêng tư / chờ duyệt chỉ chủ sở hữu thấy
+            JsonObjectBuilder ob = Json.createObjectBuilder()
                     .add("setId", x.setId())
                     .add("ten", x.ten())
                     .add("soCau", x.qs().size())
                     .add("laCuaToi", laCuaToi)
+                    .add("status", x.status())
+                    .add("daDungDuyet", x.everApproved())
                     .add("congKhai", x.isPublic())
-                    .add("tacGia", x.authorName() != null ? x.authorName() : "Hệ thống"));
+                    .add("tacGia", x.authorName() != null ? x.authorName() : "Hệ thống");
+            if (x.rejectReason() != null) {
+                ob.add("lyDoTuChoi", x.rejectReason());
+            }
+            if (laCuaToi && x.rawJson() != null) {
+                ob.add("cauHoi", x.rawJson());
+            }
+            a.add(ob);
         }
         send(s, "SET_LIST", Json.createObjectBuilder().add("sets", a));
     }
@@ -394,8 +428,66 @@ public class Game {
         Player me = me(s);
         int accId = me != null ? me.id : 0;
         String author = me != null ? me.ten : "Người dùng";
-        SETS.add(new QSet(SET_SEQ.incrementAndGet(), ten, s.id, accId, author, congKhai, qs));
-        send(s, "SET_CREATED", Json.createObjectBuilder().add("ten", ten).add("congKhai", congKhai));
+        String status = congKhai ? "PENDING" : "PRIVATE";
+        if (congKhai) {
+            quiz.util.ActivityLog.add(author + " gửi bộ câu hỏi \"" + ten + "\" (" + qs.size() + " câu) chờ duyệt công khai");
+        }
+        SETS.add(new QSet(SET_SEQ.incrementAndGet(), ten, s.id, accId, author, status, false, null, list, qs));
+        send(s, "SET_CREATED", Json.createObjectBuilder()
+                .add("ten", ten)
+                .add("status", status)
+                .add("congKhai", "APPROVED".equals(status)));
+    }
+
+    private void updateSet(Conn s, JsonObject p) {
+        int setId = p.getInt("setId", -1);
+        for (int idx = 0; idx < SETS.size(); idx++) {
+            QSet x = SETS.get(idx);
+            if (x.setId() == setId) {
+                if (!isOwner(x, s)) {
+                    error(s, "Bạn không phải chủ sở hữu bộ câu hỏi này");
+                    return;
+                }
+                String ten = p.getString("ten", "").trim();
+                boolean congKhai = p.getBoolean("congKhai", false);
+                JsonValue lv = p.get("cauHoi");
+                JsonArray list = lv instanceof JsonArray arr ? arr : JsonValue.EMPTY_JSON_ARRAY;
+                if (ten.isEmpty() || ten.length() > 60) { error(s, "Tên bộ câu hỏi không hợp lệ (1-60 ký tự)"); return; }
+                if (list.size() > 50) { error(s, "Tối đa 50 câu mỗi bộ"); return; }
+                List<Q> qs = new ArrayList<>();
+                for (int i = 0; i < list.size(); i++) {
+                    try {
+                        if (!(list.get(i) instanceof JsonObject o)) throw bad("Dữ liệu không hợp lệ");
+                        qs.add(build(o, i + 1));
+                    } catch (IllegalArgumentException e) {
+                        error(s, "Câu " + (i + 1) + ": " + e.getMessage());
+                        return;
+                    }
+                }
+                if (qs.isEmpty()) { error(s, "Bộ câu hỏi cần ít nhất 1 câu"); return; }
+
+                String newStatus = congKhai ? "PENDING" : "PRIVATE";
+                String msg;
+                if (congKhai) {
+                    msg = "Đã cập nhật bộ câu hỏi và gửi lại Admin chờ duyệt công khai!";
+                    quiz.util.ActivityLog.add(x.authorName() + " sửa và gửi lại bộ câu hỏi \"" + ten + "\" (" + qs.size() + " câu) chờ duyệt công khai");
+                } else {
+                    msg = "Đã lưu thay đổi cho bộ câu hỏi (chế độ riêng tư)";
+                    quiz.util.ActivityLog.add(x.authorName() + " sửa bộ câu hỏi \"" + ten + "\"");
+                }
+                // Khi sửa nội dung: reset rejectReason = null và everApproved = false
+                QSet updated = new QSet(x.setId(), ten, x.ownerConn(), x.ownerAccountId(), x.authorName(), newStatus, false, null, list, qs);
+                SETS.set(idx, updated);
+                send(s, "SET_UPDATED", Json.createObjectBuilder()
+                        .add("setId", setId)
+                        .add("status", newStatus)
+                        .add("congKhai", "APPROVED".equals(newStatus))
+                        .add("thongBao", msg));
+                sendSets(s);
+                return;
+            }
+        }
+        error(s, "Không tìm thấy bộ câu hỏi");
     }
 
     private void toggleSetPublic(Conn s, JsonObject p) {
@@ -407,10 +499,40 @@ public class Game {
                     error(s, "Bạn không phải chủ sở hữu bộ câu hỏi này");
                     return;
                 }
-                boolean newPub = p.containsKey("congKhai") ? p.getBoolean("congKhai") : !x.isPublic();
-                QSet updated = new QSet(x.setId(), x.ten(), x.ownerConn(), x.ownerAccountId(), x.authorName(), newPub, x.qs());
+                String cur = x.status();
+                String newStatus;
+                boolean everApp = x.everApproved();
+                String msg;
+                if ("APPROVED".equals(cur)) {
+                    newStatus = "PRIVATE";
+                    msg = "Đã tạm ẩn bộ câu hỏi về riêng tư. Bạn có thể bật lại công khai bất kỳ lúc nào mà không cần chờ duyệt lại!";
+                    quiz.util.ActivityLog.add(x.authorName() + " tạm ẩn bộ câu hỏi \"" + x.ten() + "\" về riêng tư (đã duyệt trước đó)");
+                } else if ("PENDING".equals(cur)) {
+                    newStatus = "PRIVATE";
+                    msg = "Đã hủy yêu cầu duyệt công khai";
+                    quiz.util.ActivityLog.add(x.authorName() + " hủy yêu cầu duyệt bộ câu hỏi \"" + x.ten() + "\"");
+                } else if ("PRIVATE".equals(cur)) {
+                    if (everApp) {
+                        newStatus = "APPROVED";
+                        msg = "Đã bật lại chế độ công khai (bộ câu hỏi đã được Admin duyệt trước đó)!";
+                        quiz.util.ActivityLog.add(x.authorName() + " mở lại công khai cho bộ câu hỏi \"" + x.ten() + "\" (đã duyệt trước đó)");
+                    } else {
+                        newStatus = "PENDING";
+                        msg = "Đã gửi yêu cầu công khai tới Admin chờ duyệt!";
+                        quiz.util.ActivityLog.add(x.authorName() + " gửi yêu cầu duyệt công khai bộ câu hỏi \"" + x.ten() + "\"");
+                    }
+                } else {
+                    newStatus = "PENDING";
+                    msg = "Đã gửi lại yêu cầu công khai tới Admin chờ duyệt!";
+                    quiz.util.ActivityLog.add(x.authorName() + " gửi lại yêu cầu duyệt bộ câu hỏi \"" + x.ten() + "\"");
+                }
+                QSet updated = new QSet(x.setId(), x.ten(), x.ownerConn(), x.ownerAccountId(), x.authorName(), newStatus, everApp, x.rejectReason(), x.rawJson(), x.qs());
                 SETS.set(i, updated);
-                send(s, "SET_UPDATED", Json.createObjectBuilder().add("setId", setId).add("congKhai", newPub));
+                send(s, "SET_UPDATED", Json.createObjectBuilder()
+                        .add("setId", setId)
+                        .add("status", newStatus)
+                        .add("congKhai", "APPROVED".equals(newStatus))
+                        .add("thongBao", msg));
                 sendSets(s);
                 return;
             }

@@ -10,7 +10,8 @@
         return e;
     };
 
-    let ws = null, pw = '', authed = false, poll = null, retry = null, data = null, toastT = null;
+    let ws = null, pw = '', authed = false, poll = null, retry = null, data = null, toastT = null,
+        adminSetFilter = 'pending', activeModalSet = null;
 
 // ---------- Kết nối (cùng cầu nối /ws với trang người chơi) ----------
     function wsUrl() {
@@ -120,6 +121,15 @@
         $('stRoomsSub').textContent = (s.dangThi || 0) + ' đang thi đấu';
         $('stOnline').textContent = s.online || 0;
         $('stOnlineSub').textContent = inRoom + ' trong phòng, ' + (players.length - inRoom) + ' ở sảnh';
+        const pendingCount = s.choDuyet || 0;
+        if ($('stPending')) $('stPending').textContent = pendingCount;
+        if ($('stPendingSub')) $('stPendingSub').textContent = pendingCount + ' bộ câu hỏi mới';
+        const bp = $('badgePending');
+        if (bp) {
+            bp.textContent = pendingCount;
+            bp.classList.toggle('hidden', pendingCount === 0);
+        }
+        if ($('tabPendingCount')) $('tabPendingCount').textContent = pendingCount;
         $('stCpu').textContent = (s.cpu || 0) + '%';
         $('stCpuSub').textContent = 'Bộ nhớ ' + (s.boNhoMB || 0) + ' MB · chạy ' + fmtUp(s.uptimeGiay || 0);
         const ok = typeof s.pingTB === 'number' && s.pingTB >= 0;
@@ -128,6 +138,7 @@
 
         renderRooms(rooms);
         renderPlayers(players);
+        renderSets(data.sets || []);
         renderLogs(data.logs || []);
     }
 
@@ -211,6 +222,147 @@
         });
     }
 
+    function renderSets(sets) {
+        const kw = ($('setQ') ? $('setQ').value : '').trim().toLowerCase();
+        const rows = sets.filter(s => {
+            if (adminSetFilter === 'pending' && s.status !== 'PENDING') return false;
+            if (adminSetFilter === 'approved' && s.status !== 'APPROVED') return false;
+            if (kw && !has(s.ten, kw) && !has(s.tacGia, kw)) return false;
+            return true;
+        });
+        if ($('setCount')) $('setCount').textContent = rows.length;
+        const tb = $('setTable') ? $('setTable').tBodies[0] : null;
+        if (!tb) return;
+        tb.replaceChildren();
+        if (!rows.length) {
+            emptyRow(tb, 5, sets.length ? 'Không có bộ câu hỏi khớp bộ lọc.' : 'Chưa có bộ câu hỏi nào.');
+            return;
+        }
+        rows.forEach(s => {
+            const tr = el('tr');
+            const c1 = el('td');
+            c1.append(el('div', 'cell-main', s.ten), el('div', 'cell-sub', 'ID: ' + s.setId + (s.laHeThong ? ' · Mẫu hệ thống' : '')));
+            const c2 = el('td', '', s.tacGia + (s.ownerAccountId ? ' (ID ' + s.ownerAccountId + ')' : ''));
+            const c3 = el('td', '', s.soCau + ' câu');
+            const c4 = el('td');
+            let pillClass = 'pill';
+            let pillText = 'Riêng tư';
+            if (s.status === 'PENDING') { pillClass = 'pill play'; pillText = '⏳ Chờ duyệt'; }
+            else if (s.status === 'APPROVED') { pillClass = 'pill ok'; pillText = '🌐 Đã công khai'; }
+            else if (s.status === 'REJECTED') { pillClass = 'pill bad'; pillText = '✕ Bị từ chối'; }
+            else if (s.daDungDuyet) { pillClass = 'pill info'; pillText = '🔒 Tạm ẩn (Đã duyệt)'; }
+            c4.appendChild(el('span', pillClass, pillText));
+            if (s.status === 'REJECTED' && s.lyDoTuChoi) {
+                c4.appendChild(el('div', 'cell-sub', 'Lý do: ' + s.lyDoTuChoi));
+            }
+
+            const c5 = el('td', 'act');
+            const bView = el('button', 'sm ghost', 'Xem câu hỏi');
+            bView.type = 'button';
+            bView.onclick = () => openPreviewModal(s);
+            c5.appendChild(bView);
+
+            if (s.status !== 'APPROVED') {
+                const bApprove = el('button', 'sm ok', '✓ Duyệt');
+                bApprove.type = 'button';
+                bApprove.onclick = () => {
+                    if (window.confirm('Duyệt công khai bộ câu hỏi "' + s.ten + '" của ' + s.tacGia + '?\nTất cả người chơi sẽ nhìn thấy và dùng bộ này.'))
+                        send('ADMIN_APPROVE_SET', {setId: s.setId});
+                };
+                c5.appendChild(bApprove);
+            }
+            if (s.status === 'PENDING') {
+                const bReject = el('button', 'sm danger', '✕ Từ chối');
+                bReject.type = 'button';
+                bReject.onclick = () => {
+                    const lyDo = window.prompt('Nhập lý do từ chối duyệt bộ câu hỏi "' + s.ten + '" (người tạo sẽ thấy lý do này để sửa lại):', 'Nội dung câu hỏi chưa đạt yêu cầu hoặc cần kiểm tra lại đáp án');
+                    if (lyDo !== null) {
+                        send('ADMIN_REJECT_SET', {setId: s.setId, lyDo: lyDo.trim()});
+                    }
+                };
+                c5.appendChild(bReject);
+            }
+            if (s.status === 'APPROVED' && !s.laHeThong) {
+                const bRevoke = el('button', 'sm warn', 'Gỡ công khai');
+                bRevoke.type = 'button';
+                bRevoke.onclick = () => {
+                    if (window.confirm('Gỡ công khai bộ câu hỏi "' + s.ten + '"?'))
+                        send('ADMIN_REVOKE_SET', {setId: s.setId});
+                };
+                c5.appendChild(bRevoke);
+            }
+            tr.append(c1, c2, c3, c4, c5);
+            tb.appendChild(tr);
+        });
+    }
+
+    const TYPE_NAMES = {
+        BUTTONS: 'Trắc nghiệm (1 đáp án)',
+        CHECKBOXES: 'Chọn nhiều đáp án',
+        REORDER: 'Sắp xếp thứ tự',
+        TYPE_ANSWER: 'Nhập câu trả lời',
+        RANGE: 'Thang đo số'
+    };
+
+    function openPreviewModal(set) {
+        activeModalSet = set;
+        $('modalSetTitle').textContent = set.ten;
+        $('modalSetMeta').textContent = 'Tác giả: ' + set.tacGia + ' · ' + set.soCau + ' câu hỏi · Trạng thái: ' +
+            (set.status === 'PENDING' ? 'Chờ duyệt' : set.status === 'APPROVED' ? 'Đã công khai' : 'Riêng tư');
+
+        const box = $('modalQList');
+        box.replaceChildren();
+
+        const qs = set.cauHoi || [];
+        if (!qs.length) {
+            box.appendChild(el('p', 'empty', 'Bộ câu hỏi không có nội dung.'));
+        } else {
+            qs.forEach((q, idx) => {
+                const card = el('div', 'modal-q-item');
+                const top = el('div', 'modal-q-top');
+                top.append(el('span', 'modal-q-num', 'Câu ' + (idx + 1)),
+                           el('span', 'modal-q-type', TYPE_NAMES[q.type] || q.type),
+                           el('span', 'muted', q.time + 's'));
+                card.appendChild(top);
+
+                const txt = el('div', 'modal-q-text', q.text);
+                card.appendChild(txt);
+
+                const pub = q.pub || {};
+                const key = q.key;
+                if (pub.luaChon && Array.isArray(pub.luaChon)) {
+                    const optsBox = el('div', 'modal-q-opts');
+                    pub.luaChon.forEach(o => {
+                        const optDiv = el('div', 'modal-q-opt');
+                        let isKey = false;
+                        if (typeof key === 'string' && key === o.id) isKey = true;
+                        if (Array.isArray(key) && key.includes(o.id)) isKey = true;
+                        if (isKey) optDiv.classList.add('correct');
+                        optDiv.textContent = (isKey ? '✓ ' : '• ') + o.text;
+                        optsBox.appendChild(optDiv);
+                    });
+                    card.appendChild(optsBox);
+                } else if (q.type === 'TYPE_ANSWER') {
+                    const aBox = el('div', 'modal-q-opt correct', 'Đáp án chấp nhận: ' + (Array.isArray(key) ? key.join(', ') : key));
+                    card.appendChild(aBox);
+                } else if (q.type === 'RANGE') {
+                    const aBox = el('div', 'modal-q-opt correct', 'Đáp án đúng: ' + key + ' (Min: ' + (pub.min || 0) + ', Max: ' + (pub.max || 100) + ')');
+                    card.appendChild(aBox);
+                }
+                box.appendChild(card);
+            });
+        }
+
+        $('btnModalApprove').style.display = set.status === 'APPROVED' ? 'none' : 'inline-block';
+        $('btnModalReject').style.display = set.status === 'PENDING' ? 'inline-block' : 'none';
+        $('previewModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+        $('previewModal').classList.add('hidden');
+        activeModalSet = null;
+    }
+
     function renderLogs(logs) {
         const ul = $('logList');
         ul.replaceChildren();
@@ -243,6 +395,26 @@
     $('btnRefresh').onclick = () => send('ADMIN_OVERVIEW');
     $('roomQ').oninput = render;
     $('playerQ').oninput = render;
+    if ($('setQ')) $('setQ').oninput = () => renderSets(data && data.sets ? data.sets : []);
+    $('btnCloseModal').onclick = closeModal;
+    $('btnModalClose').onclick = closeModal;
+    $('btnModalApprove').onclick = () => {
+        if (!activeModalSet) return;
+        send('ADMIN_APPROVE_SET', {setId: activeModalSet.setId});
+        toast('Đã duyệt công khai bộ câu hỏi!');
+        closeModal();
+    };
+    $('btnModalReject').onclick = () => {
+        if (!activeModalSet) return;
+        send('ADMIN_REJECT_SET', {setId: activeModalSet.setId});
+        toast('Đã từ chối duyệt bộ câu hỏi!');
+        closeModal();
+    };
+    document.querySelectorAll('#adminSetTabs button').forEach(b => b.onclick = () => {
+        adminSetFilter = b.dataset.f;
+        document.querySelectorAll('#adminSetTabs button').forEach(x => x.classList.toggle('on', x === b));
+        renderSets(data && data.sets ? data.sets : []);
+    });
     $('btnLogout').onclick = () => {
         pw = '';
         authed = false;

@@ -162,12 +162,13 @@
                 <div class="qe-top">
                     <button id="btnSaveSet" class="qe-done">Xong</button>
                     <input type="text" id="setName" class="qe-name" maxlength="60" placeholder="Tên bộ câu hỏi (ví dụ: Ôn tập Lập trình mạng)">
-                    <label class="qe-pub-toggle" title="Bật để tất cả người chơi cùng thấy và chọn bộ câu hỏi này">
+                    <label class="qe-pub-toggle" title="Gửi yêu cầu công khai để Quản trị viên duyệt cho mọi người cùng chơi">
                         <input type="checkbox" id="setPublic" checked>
-                        <span class="pub-badge-text">🌐 Công khai cho mọi người</span>
+                        <span class="pub-badge-text">🌐 Yêu cầu công khai (chờ Admin duyệt)</span>
                     </label>
                     <button id="btnCancelSet" class="qe-cancel">Hủy</button>
                 </div>
+                <div id="editReasonBanner" class="edit-reason-banner hidden"></div>
                 <div class="qe-main" id="qeMain"></div>
                 <div class="qe-strip">
                     <div id="slides"></div>

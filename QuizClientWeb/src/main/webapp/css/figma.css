@@ -1595,6 +1595,15 @@ button.slot-box:hover:not(:disabled){
     background: #f5f5f5;
     color: #616161;
 }
+.st.priv.re-pub {
+    background: #e0f2fe;
+    color: #0284c7;
+    border: 1px dashed #38bdf8;
+    font-weight: 700;
+}
+.st.priv.re-pub:hover {
+    background: #bae6fd;
+}
 .st.comm {
     background: #e3f2fd;
     color: #0d47a1;
@@ -1615,5 +1624,55 @@ button.slot-box:hover:not(:disabled){
     font-size: 14px;
     margin-top: 4px;
     font-weight: 500;
+}
+.set-reject-box {
+    background: #fff3e0;
+    border: 1px solid #ffcc80;
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #d84315;
+    line-height: 1.4;
+}
+.set-reject-box b {
+    color: #bf360c;
+}
+.rc-foot-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.btn-edit-set {
+    background: #fdf3e7 !important;
+    color: var(--orange, #e65100) !important;
+    border: 1px solid #ffd8a8 !important;
+    font-weight: 600 !important;
+    padding: 6px 14px !important;
+    border-radius: 10px !important;
+    cursor: pointer;
+    font-size: 13px !important;
+    transition: all .15s ease;
+}
+.btn-edit-set:hover {
+    background: #fae4cc !important;
+    border-color: #f7b777 !important;
+    transform: translateY(-1px);
+}
+.edit-reason-banner {
+    background: #fff3e0;
+    border: 1px solid #ffb74d;
+    color: #bf360c;
+    padding: 12px 20px;
+    border-radius: 14px;
+    margin: 12px 20px 0;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.4;
+    box-shadow: 0 2px 8px rgba(230, 81, 0, 0.08);
+}
+.edit-reason-banner.hidden {
+    display: none !important;
 }
 

@@ -251,6 +251,10 @@ main{
     background:#fbe3e0;
     color:var(--red)
 }
+.pill.info{
+    background:#e0f2fe;
+    color:#0284c7
+}
 
 .stats{
     display:grid;
@@ -423,14 +427,17 @@ tr:last-child td{
     font-size:14px
 }
 
-/* Tab: Tổng quan (tất cả) / Phòng chơi / Người chơi / Nhật ký */
-main[data-view="rooms"] .cols,main[data-view="players"] .cols,main[data-view="logs"] .cols{
+/* Tab: Tổng quan (tất cả) / Phòng chơi / Người chơi / Bộ câu hỏi / Nhật ký */
+main[data-view="rooms"] .cols,main[data-view="players"] .cols,main[data-view="sets"] .cols,main[data-view="logs"] .cols{
     grid-template-columns:1fr
 }
-main[data-view="rooms"] #sec-players,main[data-view="rooms"] #sec-logs{
+main[data-view="rooms"] #sec-players,main[data-view="rooms"] #sec-sets,main[data-view="rooms"] #sec-logs{
     display:none
 }
-main[data-view="players"] #sec-rooms,main[data-view="players"] #sec-logs{
+main[data-view="players"] #sec-rooms,main[data-view="players"] #sec-sets,main[data-view="players"] #sec-logs{
+    display:none
+}
+main[data-view="sets"] #sec-rooms,main[data-view="sets"] #sec-players,main[data-view="sets"] #sec-logs{
     display:none
 }
 main[data-view="logs"] .col-main{
@@ -441,6 +448,163 @@ main[data-view="logs"] .logs ul{
 }
 main:not([data-view="overview"]) .head{
     display:none
+}
+
+/* Nav badge */
+.nav-badge{
+    background:var(--red);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    padding:2px 7px;
+    border-radius:999px;
+    margin-left:4px;
+    display:inline-block
+}
+
+/* Chips lọc */
+.chips{
+    display:inline-flex;
+    gap:6px;
+    align-items:center;
+    margin:0 10px
+}
+.chips button{
+    font-size:13px;
+    padding:5px 12px;
+    border-radius:999px;
+    background:#efe6da;
+    color:#5a3d24;
+    cursor:pointer;
+    border:0;
+    transition:background .15s
+}
+.chips button:hover{
+    background:#e2d4c3
+}
+.chips button.on{
+    background:var(--brown);
+    color:#fff;
+    font-weight:600
+}
+
+/* Nút duyệt */
+button.sm.ok{
+    background:#2e7d32;
+    color:#fff
+}
+button.sm.ok:hover{
+    background:#1b5e20
+}
+button.sm.danger{
+    background:#c0392b;
+    color:#fff
+}
+button.sm.danger:hover{
+    background:#962d22
+}
+
+/* Modal Xem chi tiết câu hỏi */
+.modal-card{
+    background:var(--paper);
+    border-radius:20px;
+    box-shadow:0 16px 48px rgba(0,0,0,.25);
+    width:92%;
+    max-width:720px;
+    max-height:85vh;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    border:1px solid var(--line)
+}
+.modal-head{
+    padding:18px 24px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    background:#faf3e7
+}
+.modal-head h2{
+    margin:0;
+    font-size:20px;
+    color:var(--brown)
+}
+.close-x{
+    background:transparent;
+    border:none;
+    font-size:26px;
+    color:var(--muted);
+    cursor:pointer;
+    padding:0 6px;
+    line-height:1
+}
+.close-x:hover{
+    color:var(--brown)
+}
+.modal-body{
+    padding:20px 24px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:14px
+}
+.modal-q-item{
+    background:#fbf7ef;
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px 18px
+}
+.modal-q-top{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:8px
+}
+.modal-q-num{
+    font-weight:700;
+    color:var(--orange);
+    font-size:14px
+}
+.modal-q-type{
+    font-size:11px;
+    font-weight:700;
+    padding:2px 8px;
+    border-radius:6px;
+    background:#e9d4af;
+    color:#442b15
+}
+.modal-q-text{
+    font-weight:600;
+    font-size:15px;
+    color:#333;
+    margin-bottom:10px
+}
+.modal-q-opts{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:6px;
+    font-size:13px
+}
+.modal-q-opt{
+    background:#fff;
+    border:1px solid #e0d5c3;
+    padding:7px 12px;
+    border-radius:8px
+}
+.modal-q-opt.correct{
+    background:#e8f5e9;
+    border-color:#a5d6a7;
+    font-weight:700;
+    color:#2e7d32
+}
+.modal-foot{
+    padding:14px 24px;
+    border-top:1px solid var(--line);
+    display:flex;
+    gap:10px;
+    justify-content:flex-end;
+    background:#faf3e7
 }
 
 @media(max-width:980px){

@@ -172,11 +172,16 @@ function handle(m) {
             renderLeaderboard();
             break;
         case 'SET_CREATED':
-            toast('Đã lưu bộ câu hỏi "' + p.ten + '"' + (p.congKhai ? ' (Công khai)' : ' (Riêng tư)'));
+            if (p.status === 'PENDING') {
+                toast('Đã lưu bộ câu hỏi và gửi yêu cầu công khai tới Admin chờ duyệt!');
+            } else {
+                toast('Đã lưu bộ câu hỏi (Riêng tư)');
+            }
             goSets();
             break;
         case 'SET_UPDATED':
-            toast(p.congKhai ? 'Đã công khai bộ câu hỏi cho mọi người!' : 'Đã chuyển bộ câu hỏi sang riêng tư!');
+            toast(p.thongBao || (p.congKhai ? 'Đã công khai bộ câu hỏi!' : 'Đã cập nhật trạng thái bộ câu hỏi!'));
+            if (curScreen === 'createSet') goSets();
             break;
         case 'LOGIN_OK':
         case 'LOGIN_SUCCESS':
@@ -712,12 +717,30 @@ function drawSets() {
         const badges = el('div', 'set-badges');
         if (x.laCuaToi) {
             badges.appendChild(el('span', 'badge mine', 'Của tôi'));
-            const btnToggle = el('button', 'st btn-pub-toggle ' + (x.congKhai ? 'pub' : 'priv'), x.congKhai ? '🌐 Công khai' : '🔒 Riêng tư');
+            let btnCls = 'priv', btnLabel = '🔒 Riêng tư', btnTip = 'Đang là bộ riêng tư. Bấm để gửi yêu cầu công khai tới Admin';
+            if (x.status === 'PENDING') {
+                btnCls = 'play';
+                btnLabel = '⏳ Chờ duyệt';
+                btnTip = 'Đang chờ Admin duyệt công khai. Bấm để hủy và đưa về Riêng tư';
+            } else if (x.status === 'APPROVED') {
+                btnCls = 'pub';
+                btnLabel = '🌐 Đã công khai';
+                btnTip = 'Đã được Admin duyệt công khai. Bấm để tạm ẩn về Riêng tư (có thể bật lại bất kỳ lúc nào)';
+            } else if (x.status === 'REJECTED') {
+                btnCls = 'bad';
+                btnLabel = '✕ Bị từ chối';
+                btnTip = 'Admin đã từ chối duyệt công khai. Bấm để gửi lại yêu cầu duyệt';
+            } else if (x.daDungDuyet) {
+                btnCls = 'priv re-pub';
+                btnLabel = '🔒 Riêng tư (Đã duyệt)';
+                btnTip = 'Bộ câu hỏi đã được Admin duyệt trước đó! Bấm để bật lại công khai ngay lập tức không cần chờ duyệt lại';
+            }
+            const btnToggle = el('button', 'st btn-pub-toggle ' + btnCls, btnLabel);
             btnToggle.type = 'button';
-            btnToggle.title = x.congKhai ? 'Đang công khai cho mọi người. Bấm để chuyển sang Riêng tư' : 'Đang riêng tư (chỉ mình bạn). Bấm để công khai cho mọi người';
+            btnToggle.title = btnTip;
             btnToggle.onclick = (e) => {
                 e.stopPropagation();
-                send('TOGGLE_SET_PUBLIC', {setId: x.setId, congKhai: !x.congKhai});
+                send('TOGGLE_SET_PUBLIC', {setId: x.setId});
             };
             badges.appendChild(btnToggle);
         } else {
@@ -732,7 +755,16 @@ function drawSets() {
         const title = el('div', 'rc-title', x.ten);
         let authorText = '';
         if (x.laCuaToi) {
-            authorText = 'Người tạo: Bạn · ' + (x.congKhai ? 'Công khai cho mọi người' : 'Chỉ mình bạn thấy');
+            if (x.status === 'PENDING')
+                authorText = 'Người tạo: Bạn · ⏳ Đang chờ Admin duyệt công khai';
+            else if (x.status === 'APPROVED')
+                authorText = 'Người tạo: Bạn · 🌐 Đã duyệt (Mọi người đều thấy)';
+            else if (x.status === 'REJECTED')
+                authorText = 'Người tạo: Bạn · ✕ Bị Admin từ chối công khai';
+            else if (x.daDungDuyet)
+                authorText = 'Người tạo: Bạn · 🔒 Đang tạm ẩn (Đã duyệt, bấm để mở lại công khai ngay)';
+            else
+                authorText = 'Người tạo: Bạn · 🔒 Chỉ mình bạn thấy';
         } else if (x.tacGia && x.tacGia !== 'Hệ thống') {
             authorText = 'Tác giả: ' + x.tacGia + ' (Cộng đồng chia sẻ)';
         } else {
@@ -743,15 +775,82 @@ function drawSets() {
         const b = el('button', 'small', 'Tạo phòng với bộ này');
         b.onclick = () => openCreateRoom(x.setId);
         const foot = el('div', 'rc-foot');
-        foot.append(el('span', 'rc-count', x.soCau + ' câu hỏi'), b);
-        c.append(top, title, author, foot);
+        const footLeft = el('div', 'rc-foot-left');
+        footLeft.appendChild(el('span', 'rc-count', x.soCau + ' câu hỏi'));
+        if (x.laCuaToi) {
+            const bEdit = el('button', 'small btn-edit-set', '✏️ Sửa bộ này');
+            bEdit.type = 'button';
+            bEdit.title = 'Chỉnh sửa lại nội dung các câu hỏi của bộ này';
+            bEdit.onclick = (e) => {
+                e.stopPropagation();
+                editSet(x);
+            };
+            footLeft.appendChild(bEdit);
+        }
+        foot.append(footLeft, b);
+        c.append(top, title, author);
+        if (x.status === 'REJECTED' && x.lyDoTuChoi) {
+            const rbox = el('div', 'set-reject-box');
+            rbox.append(el('b', '', 'Lý do từ chối: '), document.createTextNode(x.lyDoTuChoi));
+            c.append(rbox);
+        }
+        c.append(foot);
         box.appendChild(c);
     });
 }
 
 // ---------- Trình soạn bộ câu hỏi ----------
 const ICON = {BUTTONS: '◉', CHECKBOXES: '☑', REORDER: '⇅', TYPE_ANSWER: '⌨', RANGE: '↔'};
-let slides = [], cur = 0, dragS = null;
+let slides = [], cur = 0, dragS = null, editingSetId = null;
+
+function rawToSlide(r) {
+    const t = r.loaiCauHoi || r.type || 'BUTTONS';
+    const base = blank(t);
+    base.noiDung = r.noiDung || '';
+    base.thoiGian = String(r.thoiGian || 15);
+    base.anh = r.anh || '';
+    base.amThanh = r.amThanh || '';
+    if (t === 'BUTTONS') {
+        base.dung = Array.isArray(r.dung) ? (r.dung[0] || '') : (r.dung || '');
+        base.sai = Array.isArray(r.sai) && r.sai.length ? [...r.sai] : ['', '', ''];
+        while (base.sai.length < 3) base.sai.push('');
+    } else if (t === 'CHECKBOXES') {
+        base.dung = Array.isArray(r.dung) && r.dung.length ? [...r.dung] : [''];
+        base.sai = Array.isArray(r.sai) && r.sai.length ? [...r.sai] : ['', ''];
+    } else if (t === 'REORDER') {
+        base.thuTu = Array.isArray(r.thuTu) && r.thuTu.length ? [...r.thuTu] : ['', '', ''];
+    } else if (t === 'TYPE_ANSWER') {
+        base.chapNhan = Array.isArray(r.chapNhan) && r.chapNhan.length ? [...r.chapNhan] : [''];
+    } else if (t === 'RANGE') {
+        base.min = String(r.min ?? 0);
+        base.max = String(r.max ?? 100);
+        base.step = String(r.step ?? 1);
+        base.dapAn = String(r.dapAn ?? '');
+        base.saiSo = String(r.saiSo ?? 0);
+    }
+    return base;
+}
+
+function editSet(x) {
+    editingSetId = x.setId;
+    slides = Array.isArray(x.cauHoi) && x.cauHoi.length ? x.cauHoi.map(rawToSlide) : [blank('BUTTONS')];
+    cur = 0;
+    $('setName').value = x.ten || '';
+    if ($('setPublic')) $('setPublic').checked = true;
+    const banner = $('editReasonBanner');
+    if (banner) {
+        if (x.status === 'REJECTED' && x.lyDoTuChoi) {
+            banner.innerHTML = '⚠️ <b>Lý do Admin từ chối duyệt:</b> ' + String(x.lyDoTuChoi).replace(/</g, '&lt;').replace(/>/g, '&gt;') + '<br><span style="font-weight:400;font-size:13px;color:#d84315">Bạn hãy chỉnh sửa lại các câu hỏi dưới đây rồi bấm "Lưu & Gửi duyệt lại" để gửi Admin duyệt lại.</span>';
+            banner.classList.remove('hidden');
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+    $('btnSaveSet').textContent = (x.status === 'REJECTED' || x.status === 'PENDING') ? 'Lưu & Gửi duyệt lại' : 'Lưu thay đổi';
+    show('createSet');
+    strip();
+    form();
+}
 const blank = t => ({type: t, noiDung: '', thoiGian: '15', anh: '', amThanh: '', ...({BUTTONS: {dung: '', sai: ['', '', '']}, CHECKBOXES: {dung: [''], sai: ['', '']},
                 REORDER: {thuTu: ['', '', '']}, TYPE_ANSWER: {chapNhan: ['']}, RANGE: {min: '0', max: '100', step: '1', dapAn: '', saiSo: '0'}})[t]});
 const T = v => String(v).trim(), F = a => a.map(T).filter(Boolean), N = v => T(v) === '' ? NaN : Number(v);
@@ -1115,11 +1214,15 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
     $('btnAddSlide').onclick = openPicker;
     $('btnClosePicker').onclick = () => $('typePicker').classList.add('hidden');
     $('btnNewSet').onclick = () => {
+        editingSetId = null;
         slides = [];
         cur = 0;
         $('setName').value = '';
         if ($('setPublic'))
             $('setPublic').checked = true;
+        const banner = $('editReasonBanner');
+        if (banner) banner.classList.add('hidden');
+        $('btnSaveSet').textContent = 'Xong';
         strip();
         form();
         show('createSet');
@@ -1147,7 +1250,11 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
             }
         }
         const congKhai = $('setPublic') ? $('setPublic').checked : false;
-        send('CREATE_SET', {ten, congKhai, cauHoi: slides.map(payload)});
+        if (editingSetId) {
+            send('UPDATE_SET', {setId: editingSetId, ten, congKhai, cauHoi: slides.map(payload)});
+        } else {
+            send('CREATE_SET', {ten, congKhai, cauHoi: slides.map(payload)});
+        }
     };
     function openCreateRoom(preSetId) {
         // Tạo phòng ngay với giá trị mặc định; chủ phòng chỉnh cài đặt ngay trong phòng chờ
