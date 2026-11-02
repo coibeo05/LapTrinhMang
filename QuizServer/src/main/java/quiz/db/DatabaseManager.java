@@ -65,6 +65,16 @@ public class DatabaseManager {
         return DriverManager.getConnection(getDbUrl(), dbUser, dbPass);
     }
 
+    /** Kiểm tra nhanh CSDL có dùng được không (MySQL đã bật, đúng tài khoản/mật khẩu). Dùng để báo lỗi đúng chỗ. */
+    public static boolean ping() {
+        try (Connection c = getConnection()) {
+            return c.isValid(2);
+        } catch (SQLException e) {
+            System.err.println("CSDL không dùng được: " + e.getMessage());
+            return false;
+        }
+    }
+
     /** Tự động tạo Database nếu chưa có và khởi tạo 5 bảng theo Mục 3.4 */
     private static void initDatabaseAndTables() throws SQLException {
         // 1. Tạo Database nếu chưa tồn tại

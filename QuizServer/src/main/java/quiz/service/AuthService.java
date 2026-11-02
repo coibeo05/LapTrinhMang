@@ -6,6 +6,7 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
 import quiz.Conn;
 import quiz.db.AccountDAO;
+import quiz.db.DatabaseManager;
 import quiz.db.MatchResultDAO;
 import quiz.model.Account;
 import quiz.model.Message;
@@ -22,6 +23,8 @@ public class AuthService {
     private static final GoogleTokenVerifier GOOGLE = GoogleTokenVerifier.createDefault();
     private final AccountDAO accountDAO;
     private final MatchResultDAO matchResultDAO;
+
+    private static final String DB_DOWN = "Máy chủ không kết nối được cơ sở dữ liệu (MySQL chưa bật hoặc sai cấu hình)";
 
     public AuthService() {
         this.accountDAO = new AccountDAO();
@@ -46,6 +49,9 @@ public class AuthService {
             return fail("REGISTER_FAIL", "Mật khẩu xác nhận không khớp", clientSessionId);
         }
 
+        if (!DatabaseManager.ping()) {
+            return fail("REGISTER_FAIL", DB_DOWN, clientSessionId);
+        }
         if (accountDAO.existsByUsername(username)) {
             return fail("REGISTER_FAIL", "Tên đăng nhập đã tồn tại", clientSessionId);
         }
@@ -79,11 +85,14 @@ public class AuthService {
             return fail("LOGIN_FAIL", "Vui lòng nhập tên đăng nhập", session.getSessionId());
         }
 
-        Account acc = accountDAO.findByUsername(username);
-
         if (password.isEmpty()) {
             return fail("LOGIN_FAIL", "Vui lòng nhập mật khẩu", session.getSessionId());
         }
+        if (!DatabaseManager.ping()) {
+            return fail("LOGIN_FAIL", DB_DOWN, session.getSessionId());
+        }
+        Account acc = accountDAO.findByUsername(username);
+
         if (acc == null || !PasswordUtil.verify(password, acc.getPasswordHash())) {
             return fail("LOGIN_FAIL", "Sai tên đăng nhập hoặc mật khẩu", session.getSessionId());
         }
@@ -117,6 +126,9 @@ public class AuthService {
             return fail("LOGIN_FAIL", e.getMessage(), sid);
         }
 
+        if (!DatabaseManager.ping()) {
+            return fail("LOGIN_FAIL", DB_DOWN, sid);
+        }
         Account acc = accountDAO.findByGoogleSub(gu.sub());
         if (acc == null) {
             // Mật khẩu ngẫu nhiên không ai biết: tài khoản Google không thể đăng nhập bằng mật khẩu.
@@ -149,6 +161,9 @@ public class AuthService {
      * Việc kiểm tra mã khôi phục do Game làm; ở đây chỉ dựng lại phiên và dữ liệu trả về.
      */
     public Message handleResume(int accountId, Session session) {
+        if (!DatabaseManager.ping()) {
+            return fail("RESUME_FAIL", DB_DOWN, session.getSessionId());
+        }
         Account acc = accountDAO.findById(accountId);
         if (acc == null) {
             return fail("RESUME_FAIL", "Tài khoản không còn tồn tại", session.getSessionId());
