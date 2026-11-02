@@ -9,6 +9,8 @@ public class Main {
     public static void main(String[] a) throws Exception {
         int port = a.length > 0 ? Integer.parseInt(a[0]) : 9000;
         Class.forName("quiz.db.DatabaseManager");   // lỗi kết nối DB hiện ngay khi bật server
+        if (!quiz.db.DatabaseManager.ping())
+            System.err.println("!!! CẢNH BÁO: chưa kết nối được MySQL, người chơi sẽ KHÔNG đăng nhập/đăng ký được. Bật MySQL (XAMPP) rồi kiểm tra db.properties.");
         Game g = new Game();
         quiz.util.AdminConfig.announce();
         PingService.start();

@@ -160,7 +160,8 @@ public class Game {
                 default -> { }
             }
         } catch (RuntimeException e) {
-            // gói tin sai định dạng: bỏ qua
+            // gói tin sai định dạng: bỏ qua, nhưng ghi log để còn biết vì sao một thao tác không có phản hồi
+            System.err.println("Bỏ qua gói tin lỗi (" + e + "): " + (msg.length() > 120 ? msg.substring(0, 120) + "..." : msg));
         }
     }
 
