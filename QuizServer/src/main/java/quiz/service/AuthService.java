@@ -144,6 +144,27 @@ public class AuthService {
         return new Message("LOGIN_SUCCESS", sid, b.build());
     }
 
+    /**
+     * KHÔI PHỤC PHIÊN: gắn lại tài khoản (đọc mới từ CSDL) vào session của kết nối mới.
+     * Việc kiểm tra mã khôi phục do Game làm; ở đây chỉ dựng lại phiên và dữ liệu trả về.
+     */
+    public Message handleResume(int accountId, Session session) {
+        Account acc = accountDAO.findById(accountId);
+        if (acc == null) {
+            return fail("RESUME_FAIL", "Tài khoản không còn tồn tại", session.getSessionId());
+        }
+        SessionManager.bindAccount(session, acc);
+        JsonObjectBuilder b = Json.createObjectBuilder()
+                .add("sessionId", session.getSessionId())
+                .add("accountId", acc.getAccountId())
+                .add("username", acc.getUsername())
+                .add("ten", acc.getUsername())
+                .add("tongDiem", acc.getTongDiem())
+                .add("tongTranThang", acc.getTongTranThang())
+                .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "");
+        return new Message("LOGIN_SUCCESS", session.getSessionId(), b.build());
+    }
+
     /** Tên hiển thị lấy từ tên Google, tự thêm số nếu bị trùng (username là UNIQUE). */
     private String uniqueUsername(GoogleTokenVerifier.GoogleUser gu) {
         String base = gu.name().replaceAll("\\p{Cntrl}", "").replaceAll("\\s+", " ").trim();

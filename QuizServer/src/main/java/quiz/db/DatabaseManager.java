@@ -143,6 +143,18 @@ public class DatabaseManager {
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """);
 
+            // Bảng 6: QuestionSet - bộ câu hỏi do người dùng tạo (mỗi dòng là một bộ, các câu hỏi lưu dạng JSON)
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS `QuestionSet` (
+                    `setId` INT AUTO_INCREMENT PRIMARY KEY,
+                    `ownerId` INT NOT NULL,
+                    `ten` VARCHAR(60) NOT NULL,
+                    `cauHoi` MEDIUMTEXT NOT NULL,
+                    `ngayTao` DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (`ownerId`) REFERENCES `Account` (`accountId`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            """);
+
             System.out.println("CSDL MySQL [" + dbName + "] đã sẵn sàng tại " + dbHost + ":" + dbPort);
         }
     }

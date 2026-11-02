@@ -66,23 +66,65 @@ let answered = false, touched = false, chosen = null, endAt = 0, pendingRank = [
 let currentUser = null;
 
 // ---------- Kết nối ----------
+let reconnT = null, reconnTries = 0, lastMsgAt = Date.now();
 function connect() {
+    clearTimeout(reconnT);
     const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + location.pathname.replace(/[^/]*$/, '') + 'ws';
-    ws = new WebSocket(url);
-    ws.onopen = () => {
+    const sock = ws = new WebSocket(url);
+    // Mọi sự kiện của một kết nối đã bị thay thế (sock !== ws) đều bị bỏ qua
+    sock.onopen = () => {
+        if (sock !== ws)
+            return;
+        reconnTries = 0;
+        lastMsgAt = Date.now();
         $('conn').className = 'dot on';
         const t = tokenGet();
-        if (t && !currentUser) {
+        if (t) {   // tải lại trang hoặc vừa nối lại sau khi mất mạng: vào lại bằng mã, không cần nhập mật khẩu
             resuming = true;
             send('RESUME', {token: t});
-        }   // tải lại trang: vào lại bằng mã, không cần nhập mật khẩu
+        }
     };
-    ws.onclose = () => {
+    sock.onclose = () => {
+        if (sock !== ws)
+            return;
         $('conn').className = 'dot';
-        toast('Mất kết nối tới Server');
+        scheduleReconnect();
     };
-    ws.onmessage = e => handle(JSON.parse(e.data));
+    sock.onmessage = e => {
+        if (sock !== ws)
+            return;
+        lastMsgAt = Date.now();
+        handle(JSON.parse(e.data));
+    };
 }
+// Mất kết nối thì tự nối lại (1s, 2s, 4s, rồi 5s một lần) và khôi phục phiên; người dùng vẫn ở nguyên trang đang xem
+function scheduleReconnect() {
+    clearTimeout(reconnT);
+    if (currentUser)
+        toast('Mất kết nối, đang kết nối lại...');
+    reconnT = setTimeout(connect, Math.min(1000 * Math.pow(2, reconnTries++), 5000));
+}
+// Kết nối "treo" (rớt mạng mà trình duyệt chưa biết): Server PING mỗi 5s, im lặng quá 20s thì coi là đã chết và nối lại ngay
+setInterval(() => {
+    if (currentUser && ws && ws.readyState === 1 && Date.now() - lastMsgAt > 20000) {
+        const dead = ws;
+        $('conn').className = 'dot';
+        connect();
+        try {
+            dead.close();
+        } catch (e) { /* bỏ qua */
+        }
+    }
+}, 5000);
+// Có mạng lại / quay lại tab mà kết nối đã đóng thì nối ngay, không chờ hết thời gian chờ
+['online', 'visibilitychange'].forEach(ev => window.addEventListener(ev, () => {
+    if (ev === 'visibilitychange' && document.hidden)
+        return;
+    if (!ws || ws.readyState > 1) {
+        reconnTries = 0;
+        connect();
+    }
+}));
 function send(type, payload) {
     if (ws && ws.readyState === 1)
         ws.send(JSON.stringify({type, sessionId: CFG.sessionId, payload: payload || {}}));
@@ -177,7 +219,11 @@ function handle(m) {
             break;
         case 'LOGIN_OK':
         case 'LOGIN_SUCCESS':
+            // nối lại sau khi mất mạng mà vẫn còn nguyên trạng (không bị đưa ra khỏi phòng): ở yên trang đang xem, giữ nguyên dữ liệu đang nhập
+            const stay = !!currentUser && !!p.daKhoiPhuc && !p.daRoiPhong && !['login', 'resuming'].includes(curScreen);
             currentUser = p;
+            if (p.daKhoiPhuc)
+                clearTimers();   // đang dở câu hỏi/đếm ngược khi mất kết nối thì dừng lại, đã bị đưa ra khỏi phòng
             CFG.accountId = p.accountId;
             if (p.sessionId)
                 CFG.sessionId = p.sessionId;
@@ -194,27 +240,35 @@ function handle(m) {
             $('infoJoined').textContent = p.ngayTao || 'Hôm nay';
             if (p.resumeToken)
                 tokenSet(p.resumeToken);
-            toast(p.daKhoiPhuc ? (p.daRoiPhong ? 'Đã khôi phục phiên. Bạn đã rời phòng vì tải lại trang.' : 'Đã khôi phục phiên đăng nhập')
+            toast(p.daKhoiPhuc ? (p.daRoiPhong ? 'Đã khôi phục phiên. Bạn đã rời phòng vì tải lại trang hoặc mất kết nối.' : 'Đã khôi phục phiên đăng nhập')
                     : 'Đăng nhập thành công: ' + (p.username || p.ten || ''));
             $('mainNav').classList.remove('hidden');
             {
                 // thay mục lịch sử hiện tại (thay vì thêm mới) để nút Back không bao giờ quay về màn hình đăng nhập
                 const want = (resuming ? location.hash : '').replace('#', ''), pg = PAGES.includes(want) ? want : 'home';
                 resuming = false;
-                history.replaceState({p: pg}, '', '#' + pg);
-                if (pg === 'sets')
-                    goSets();
-                else if (pg === 'leaderboard')
-                    goRank();
-                else
-                    goHome();
+                if (!stay) {
+                    history.replaceState({p: pg}, '', '#' + pg);
+                    if (pg === 'sets')
+                        goSets();
+                    else if (pg === 'leaderboard')
+                        goRank();
+                    else
+                        goHome();
+                }
+                if (pendingJoin) {
+                    send('JOIN_ROOM', {roomId: pendingJoin});
+                    pendingJoin = '';
+                }
             }
             break;
         case 'RESUME_FAIL':
-            resuming = false;
-            tokenClear();
-            show('login');
+            doLogout();   // xóa mã + dọn giao diện (cả khi đang ở sảnh mà Server đã quên phiên, ví dụ Server khởi động lại)
             toast(p.lyDo || 'Phiên đăng nhập đã hết hạn, hãy đăng nhập lại');
+            break;
+        case 'KICKED':   // bị quản trị viên ngắt, hoặc tài khoản được mở ở tab/thiết bị khác
+            doLogout();
+            toast(p.thongBao || 'Bạn đã bị ngắt kết nối');
             break;
         case 'LOGIN_FAIL':
             toast(p.thongBao || p.lyDo || 'Đăng nhập thất bại');
@@ -593,6 +647,8 @@ let sets = [];
 let lastRank = [], roomPlayers = [], allRooms = [], roomFilter = 'all';
 let lbData = null, lbTab = 'played', lastRoom = null;
 let resuming = false, curScreen = 'login', roomsLoaded = false;
+// Mở bằng link mời (#join=MÃ): ghi nhớ mã, đăng nhập xong sẽ tự vào phòng
+let pendingJoin = ((location.hash.match(/^#join=([A-Za-z0-9]{3,8})/) || [])[1] || '').toUpperCase();
 
 function goHome() {
     $('score').textContent = '';
@@ -1306,8 +1362,9 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
     const invite = () => {
         if (!lastRoom)
             return;
-        const text = 'Vào phòng "' + lastRoom.ten + '" trên QUIZ với mã ' + lastRoom.roomId + ' tại ' + location.origin + location.pathname;
-        (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast('Đã sao chép lời mời, hãy gửi cho bạn bè'), () => toast('Mã phòng: ' + lastRoom.roomId));
+        // Link mời: mở link này (sau khi đăng nhập) là tự vào đúng phòng
+        const link = location.origin + location.pathname + '#join=' + lastRoom.roomId;
+        (navigator.clipboard ? navigator.clipboard.writeText(link) : Promise.reject()).then(() => toast('Đã sao chép link mời phòng ' + lastRoom.roomId + ', hãy gửi cho bạn bè'), () => toast('Mã phòng: ' + lastRoom.roomId));
     };
     $('btnInvite').onclick = invite;
     $('slotBox').onclick = invite;

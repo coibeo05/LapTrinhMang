@@ -80,9 +80,8 @@
             <section id="home" class="screen page hidden">
                 <div class="page-head">
                     <div>
-                        <div class="eyebrow">SẢNH CHƠI · QUIZ</div>
-                        <h1>Chọn phòng, sẵn sàng thi đấu nào!</h1>
-                        <p class="muted">Cùng nhau chinh phục thử thách và ghi tên lên bảng xếp hạng!</p>
+                        <h1>Phòng chơi</h1>
+                        <p class="muted">Tham gia một phòng đang mở, nhập mã phòng của bạn bè hoặc tạo phòng mới.</p>
                     </div>
                     <button id="btnNewRoom" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Tạo phòng mới</button>
                 </div>
@@ -93,11 +92,10 @@
                             <input type="text" id="joinCode" maxlength="6" placeholder="Nhập mã phòng · VD: P7K2M" style="text-transform:uppercase">
                             <button id="btnJoinCode" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg> Vào bằng mã</button>
                         </div>
-                        <small class="hint">Mã gồm 5 ký tự. Bạn có thể tham gia phòng công khai hoặc phòng riêng bằng mã.</small>
                     </div>
                     <div class="info-card">
-                        <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg> Lập trình mạng</h3>
-                        <p>TCP/UDP · Socket · Client-server · HTTP</p>
+                        <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg> Bộ câu hỏi</h3>
+                        <p>Chọn bộ có sẵn hoặc tự soạn bộ câu hỏi riêng để tạo phòng.</p>
                         <div class="info-foot"><b id="setSummary">0 câu hỏi · 0 bộ</b><a id="linkSets" href="#">Xem bộ câu hỏi &rarr;</a></div>
                     </div>
                 </div>
@@ -118,9 +116,8 @@
             <section id="sets" class="screen page hidden">
                 <div class="page-head">
                     <div>
-                        <div class="eyebrow">THƯ VIỆN · QUIZ</div>
                         <h1>Bộ câu hỏi</h1>
-                        <p class="muted">Bộ có sẵn của hệ thống và bộ riêng do bạn tạo. Bộ riêng chỉ mình bạn nhìn thấy.</p>
+                        <p class="muted">Chọn một bộ để tạo phòng, hoặc tự soạn bộ câu hỏi riêng của bạn.</p>
                     </div>
                     <button id="btnNewSet" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Tạo bộ câu hỏi</button>
                 </div>
@@ -168,10 +165,9 @@
                     <div>
                         <div class="eyebrow">PHÒNG CHƠI / SẢNH CHỜ</div>
                         <h1 id="roomTitle"></h1>
-                        <p id="roomInfo" class="muted">Đồng đội đã có mặt. Hãy sẵn sàng cho thử thách nào?</p>
                     </div>
                     <div class="head-actions">
-                        <button id="btnInvite" class="invite" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/></svg> Mời bạn bè</button>
+                        <button id="btnInvite" class="invite" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="M19 16v6"/><path d="M22 19h-6"/></svg> Sao chép link mời</button>
                         <button id="btnLeaveRoom" class="outline" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg> Rời phòng</button>
                     </div>
                 </div>
@@ -201,7 +197,6 @@
                                 <label class="sfield"><span>CHẾ ĐỘ PHÒNG</span><select id="setCheDo"></select></label>
                                 <label class="sfield"><span>TÊN PHÒNG</span><input type="text" id="roomNameIn" maxlength="40"></label>
                             </div>
-                            <small class="hint">Chủ đề: TCP/UDP, Socket, Client-server, HTTP · Đáp án đúng và tốc độ quyết định điểm số.</small>
                         </div>
                         <div class="panel start-panel">
                             <div class="st-text"><b id="startTitle"></b><small id="startHint"></small></div>
@@ -213,15 +208,6 @@
                         </div>
                     </div>
                     <aside class="wait-side">
-                        <div class="panel big rules">
-                            <h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg> Chơi vui, học thật</h3>
-                            <ol class="rule-list">
-                                <li><b>01</b><span>Chọn đáp án trước khi hết giờ.</span></li>
-                                <li><b>02</b><span>Trả lời đúng và nhanh để ghi điểm (1000 → 400).</span></li>
-                                <li><b>03</b><span>Chat cổ vũ, đừng bật mí đáp án!</span></li>
-                            </ol>
-                            <small class="hint">Rời phòng giữa trận sẽ không được tính điểm của trận đó.</small>
-                        </div>
                         <div class="panel big chat-panel">
                             <div class="panel-head"><h3><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Chat phòng</h3><span id="chatOnline" class="count teal">0 trực tuyến</span></div>
                             <div id="chatLog" class="chat-log"></div>
@@ -352,6 +338,6 @@
         </div>
         <div id="toast" class="hidden"></div>
         <script src="https://accounts.google.com/gsi/client" async defer></script>
-        <script src="js/app.js?v=16"></script>
+        <script src="js/app.js?v=17"></script>
     </body>
 </html>

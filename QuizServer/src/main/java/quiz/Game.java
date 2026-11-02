@@ -61,6 +61,46 @@ public class Game {
                 Json.createObjectBuilder().add("min", 0).add("max", 10000).add("step", 50).build(),
                 Json.createValue(8849), 100));
         SETS.add(new QSet(SET_SEQ.incrementAndGet(), "Kiến thức chung (mẫu)", null, new ArrayList<>(BANK)));
+        loadSavedSets();   // nạp lại các bộ do người dùng tạo từ CSDL
+    }
+
+    // ---- Bộ câu hỏi riêng được lưu bền trong CSDL (bảng QuestionSet) ----
+    // setId hiển thị = setId trong CSDL + 1, vì số 1 dành cho bộ mẫu của hệ thống.
+    // Chủ sở hữu là accountId (dạng chữ), nên đăng nhập lại hay khởi động lại server vẫn thấy bộ của mình.
+
+    /** Chủ sở hữu bộ riêng của kết nối này, hoặc null nếu chưa đăng nhập. */
+    private static String ownerKey(Conn s) {
+        return s.p == null || s.p.id <= 0 ? null : String.valueOf(s.p.id);
+    }
+
+    static JsonObject qToJson(Q q) {
+        JsonObjectBuilder b = Json.createObjectBuilder()
+                .add("type", q.type()).add("text", q.text())
+                .add("pub", q.pub()).add("key", q.key())
+                .add("tol", q.tol()).add("time", q.time());
+        if (q.image() != null) b.add("image", q.image());
+        if (q.audio() != null) b.add("audio", q.audio());
+        return b.build();
+    }
+
+    static Q qFromJson(JsonObject o, int id) {
+        return new Q(id, o.getString("type"), o.getString("text"), o.getJsonObject("pub"), o.get("key"),
+                o.getJsonNumber("tol").doubleValue(), o.getInt("time"),
+                o.containsKey("image") ? o.getString("image") : null,
+                o.containsKey("audio") ? o.getString("audio") : null);
+    }
+
+    private static void loadSavedSets() {
+        for (quiz.db.QuestionSetDAO.Row r : new quiz.db.QuestionSetDAO().loadAll()) {
+            try (JsonReader jr = Json.createReader(new StringReader(r.cauHoi()))) {
+                JsonArray arr = jr.readArray();
+                List<Q> qs = new ArrayList<>();
+                for (int i = 0; i < arr.size(); i++) qs.add(qFromJson(arr.getJsonObject(i), i + 1));
+                if (!qs.isEmpty()) SETS.add(new QSet(r.setId() + 1, r.ten(), String.valueOf(r.ownerId()), qs));
+            } catch (RuntimeException e) {
+                System.err.println("Bỏ qua bộ câu hỏi #" + r.setId() + " bị hỏng: " + e.getMessage());
+            }
+        }
     }
 
     private static final AtomicInteger IDS = new AtomicInteger(0);
@@ -69,7 +109,15 @@ public class Game {
 
     public void onClose(Conn s) {
         Player p = me(s);
-        if (p != null && p.room != null) p.room.leave(p);
+        boolean inRoom = p != null && p.room != null;
+        if (inRoom) p.room.leave(p);
+        // Mất kết nối (tải lại trang / rớt mạng): giữ mã khôi phục thêm một lúc để người chơi vào lại không cần mật khẩu
+        String t = s.resumeToken;
+        ResumeInfo r = t == null ? null : RESUME.get(t);
+        if (r != null && r.conn == s) {   // nếu kết nối khác đã nhận mã này rồi thì không đụng vào
+            r.leftRoom = inRoom;
+            r.expireAt = System.currentTimeMillis() + RESUME_TTL_MS;
+        }
     }
 
     public void onMessage(String msg, Conn s) {
@@ -81,6 +129,7 @@ public class Game {
             if (type.equals("REGISTER")) { register(s, p); return; }
             if (type.equals("LOGIN")) { login(s, p); return; }
             if (type.equals("GOOGLE_LOGIN")) { googleLogin(s, p); return; }
+            if (type.equals("RESUME")) { resume(s, p); return; }
             if (type.startsWith("ADMIN_")) { AdminService.handle(type, p, s); return; }
             Player me = me(s);
             if (me == null) { error(s, "Bạn chưa đăng nhập"); return; }
@@ -146,6 +195,7 @@ public class Game {
                     .add("tongDiem", acc.getTongDiem())
                     .add("tongTranThang", acc.getTongTranThang())
                     .add("ngayTao", acc.getNgayTao() != null ? acc.getNgayTao() : "");
+            payload.add("resumeToken", issueToken(s, acc.getAccountId(), null));
             quiz.util.ActivityLog.add(acc.getUsername() + " đăng nhập");
             send(s, "LOGIN_OK", payload);
         } else {
@@ -162,7 +212,9 @@ public class Game {
             Player me = new Player(acc.getAccountId(), acc.getUsername(), s, acc);
             s.p = me;
             quiz.util.ActivityLog.add(acc.getUsername() + " đăng nhập (Google)");
-            send(s, "LOGIN_OK", res.payload());
+            JsonObjectBuilder payload = Json.createObjectBuilder(res.payload())
+                    .add("resumeToken", issueToken(s, acc.getAccountId(), res.payload().getString("email", "")));
+            send(s, "LOGIN_OK", payload);
         } else {
             error(s, res.payload().getString("lyDo", "Đăng nhập Google thất bại"));
         }
@@ -173,7 +225,7 @@ public class Game {
         QSet newSet = null;
         if (p.containsKey("setId")) {
             int setId = p.getInt("setId", -1);
-            newSet = SETS.stream().filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(s.id))).findFirst().orElse(null);
+            newSet = SETS.stream().filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(ownerKey(s)))).findFirst().orElse(null);
             if (newSet == null) { error(s, "Bộ câu hỏi không tồn tại"); return; }
         }
         String err = r.configure(me, p, newSet);
@@ -225,6 +277,7 @@ public class Game {
     }
 
     private void logout(Conn s) {
+        revoke(s);   // đăng xuất chủ động: mã khôi phục hết hiệu lực ngay
         Player p = me(s);
         if (p != null && p.room != null) p.room.leave(p);
         if (p != null) quiz.util.ActivityLog.add(p.ten + " đăng xuất");
@@ -234,6 +287,94 @@ public class Game {
             s.session = quiz.net.SessionManager.createSession(s);
         }
         send(s, "LOGOUT_OK", Json.createObjectBuilder().add("thongBao", "Đã đăng xuất"));
+    }
+
+    // ---- Khôi phục phiên: tải lại trang / mất mạng thì vào lại bằng mã, không phải đăng nhập lại ----
+    private static final long RESUME_TTL_MS = 10 * 60_000L;   // giữ mã 10 phút kể từ lúc kết nối cuối cùng bị mất
+    private static final java.security.SecureRandom RNG = new java.security.SecureRandom();
+    private static final Map<String, ResumeInfo> RESUME = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final class ResumeInfo {
+        final int accountId;
+        final String connId;           // giữ nguyên Conn.id để vẫn thấy các bộ câu hỏi riêng đã tạo
+        final String email;            // khác null nếu đăng nhập bằng Google
+        volatile Conn conn;            // kết nối đang giữ mã này
+        volatile long expireAt = Long.MAX_VALUE;   // chỉ đếm ngược khi không còn kết nối nào
+        volatile boolean leftRoom;     // lần mất kết nối gần nhất có khiến người chơi rời phòng không
+
+        ResumeInfo(int accountId, String connId, String email, Conn conn) {
+            this.accountId = accountId;
+            this.connId = connId;
+            this.email = email;
+            this.conn = conn;
+        }
+    }
+
+    /** Cấp mã khôi phục (ngẫu nhiên 256 bit) cho kết nối vừa đăng nhập; mã cũ của kết nối này (nếu có) bị thu hồi. */
+    private static String issueToken(Conn s, int accountId, String email) {
+        revoke(s);
+        purgeExpired();
+        byte[] b = new byte[32];
+        RNG.nextBytes(b);
+        String t = Base64.getUrlEncoder().withoutPadding().encodeToString(b);
+        RESUME.put(t, new ResumeInfo(accountId, s.id, email, s));
+        s.resumeToken = t;
+        return t;
+    }
+
+    /** Thu hồi mã khôi phục của kết nối (đăng xuất, bị quản trị viên ngắt...). */
+    static void revoke(Conn s) {
+        String t = s.resumeToken;
+        if (t != null) {
+            RESUME.remove(t);
+            s.resumeToken = null;
+        }
+    }
+
+    private static void purgeExpired() {
+        long now = System.currentTimeMillis();
+        RESUME.values().removeIf(r -> r.expireAt < now);
+    }
+
+    private void resume(Conn s, JsonObject p) {
+        if (s.p != null) return;   // kết nối này đã đăng nhập rồi
+        purgeExpired();
+        ResumeInfo r = RESUME.get(p.getString("token", ""));
+        if (r == null) {
+            send(s, "RESUME_FAIL", Json.createObjectBuilder().add("lyDo", "Phiên đăng nhập đã hết hạn, hãy đăng nhập lại"));
+            return;
+        }
+        String token = p.getString("token", "");
+        Message res;
+        boolean left;
+        synchronized (r) {
+            Conn old = r.conn;
+            left = r.leftRoom;
+            r.conn = s;                          // đặt trước để onClose của kết nối cũ không đặt lại hạn dùng
+            r.expireAt = Long.MAX_VALUE;
+            r.leftRoom = false;
+            if (old != null && old != s) {       // kết nối cũ có thể chưa bị phát hiện đã chết (rớt mạng) hoặc là tab nhân bản
+                Player op = old.p;
+                if (op != null && op.room != null) { left = true; op.room.leave(op); }
+                old.sendLine("{\"type\":\"KICKED\",\"payload\":{\"thongBao\":\"Tài khoản đã được mở ở tab hoặc thiết bị khác\"}}");
+                old.close();
+            }
+            res = authService.handleResume(r.accountId, s.session);
+        }
+        if (!"LOGIN_SUCCESS".equals(res.type())) {
+            RESUME.remove(token);
+            send(s, "RESUME_FAIL", Json.createObjectBuilder().add("lyDo", res.payload().getString("lyDo", "Không khôi phục được phiên")));
+            return;
+        }
+        Account acc = s.session.getAccount();
+        s.id = r.connId;
+        s.p = new Player(acc.getAccountId(), acc.getUsername(), s, acc);
+        s.resumeToken = token;
+        JsonObjectBuilder b = Json.createObjectBuilder(res.payload())
+                .add("resumeToken", token).add("daKhoiPhuc", true).add("daRoiPhong", left);
+        if (r.email != null) b.add("isGoogle", true).add("email", r.email);
+        quiz.util.ActivityLog.add(acc.getUsername() + " khôi phục phiên");
+        send(s, "LOGIN_OK", b);
     }
 
     private void error(Conn s, String msg) {
@@ -351,7 +492,7 @@ public class Game {
     private void sendSets(Conn s) {
         JsonArrayBuilder a = Json.createArrayBuilder();
         for (QSet x : SETS) {
-            if (x.owner() != null && !x.owner().equals(s.id)) continue;   // bộ riêng chỉ chủ sở hữu thấy
+            if (x.owner() != null && !x.owner().equals(ownerKey(s))) continue;   // bộ riêng chỉ chủ sở hữu thấy
             a.add(Json.createObjectBuilder().add("setId", x.setId()).add("ten", x.ten())
                     .add("soCau", x.qs().size()).add("laCuaToi", x.owner() != null));
         }
@@ -375,7 +516,13 @@ public class Game {
             }
         }
         if (qs.isEmpty()) { error(s, "Bộ câu hỏi cần ít nhất 1 câu"); return; }
-        SETS.add(new QSet(SET_SEQ.incrementAndGet(), ten, s.id, qs));
+        String owner = ownerKey(s);
+        if (owner == null) { error(s, "Bạn cần đăng nhập để tạo bộ câu hỏi"); return; }
+        JsonArrayBuilder saved = Json.createArrayBuilder();
+        for (Q q : qs) saved.add(qToJson(q));
+        int dbId = new quiz.db.QuestionSetDAO().insert(s.p.id, ten, saved.build().toString());
+        if (dbId <= 0) { error(s, "Không lưu được bộ câu hỏi vào cơ sở dữ liệu, hãy thử lại"); return; }
+        SETS.add(new QSet(dbId + 1, ten, owner, qs));
         send(s, "SET_CREATED", Json.createObjectBuilder().add("ten", ten));
     }
 
@@ -383,7 +530,7 @@ public class Game {
         if (me.room != null) return;
         int setId = p.getInt("setId", -1);
         QSet set = SETS.stream()
-                .filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(s.id)))
+                .filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(ownerKey(s))))
                 .findFirst().orElse(null);
         if (set == null) { error(s, "Bộ câu hỏi không tồn tại"); return; }
         String ten = p.getString("ten", "").trim();

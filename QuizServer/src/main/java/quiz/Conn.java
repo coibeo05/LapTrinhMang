@@ -13,7 +13,7 @@ import java.util.UUID;
  */
 public class Conn {
 
-    public final String id = UUID.randomUUID().toString();
+    public volatile String id = UUID.randomUUID().toString();   // không final: khôi phục phiên thì nhận lại id cũ
     public volatile Player p;          // Người chơi đã đăng nhập trên kết nối này
     public volatile Session session;   // Phiên làm việc (Session) của kết nối này
     public volatile boolean admin;     // đã xác thực trang quản trị

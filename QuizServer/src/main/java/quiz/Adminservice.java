@@ -38,7 +38,8 @@ final class AdminService {
                 Conn c = connOf(p.getInt("accountId", -1));
                 if (c != null) {
                     ActivityLog.add("Quản trị viên ngắt kết nối " + (c.p != null ? c.p.ten : "một người chơi"));
-                    c.sendLine(msg("ERROR", Json.createObjectBuilder().add("thongBao", "Bạn đã bị quản trị viên ngắt kết nối")));
+                    Game.revoke(c);   // thu hồi mã khôi phục để trình duyệt không tự vào lại
+                    c.sendLine(msg("KICKED", Json.createObjectBuilder().add("thongBao", "Bạn đã bị quản trị viên ngắt kết nối")));
                     c.close();
                 }
                 overview(s);
