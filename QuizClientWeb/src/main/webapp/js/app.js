@@ -214,8 +214,24 @@ function handle(m) {
             renderLeaderboard();
             break;
         case 'SET_CREATED':
-            toast('Đã lưu bộ câu hỏi "' + p.ten + '"');
+            toast(p.trangThai === 'PENDING' ? 'Đã lưu "' + p.ten + '" và gửi quản trị viên duyệt công khai' : 'Đã lưu bộ câu hỏi "' + p.ten + '" (riêng tư)');
+            editingSetId = null;
             goSets();
+            break;
+        case 'SET_UPDATED':   // sửa nội dung, bật/tắt công khai, xoá
+            toast(p.thongBao || 'Đã cập nhật bộ câu hỏi');
+            if (p.tuTrinhSoan) {
+                editingSetId = null;
+                goSets();
+            }
+            break;
+        case 'SET_DETAIL':
+            openEditor(p);
+            break;
+        case 'SET_NOTICE':   // quản trị viên vừa duyệt / từ chối / gỡ một bộ của mình
+            toast(p.thongBao || 'Bộ câu hỏi của bạn vừa được cập nhật');
+            if (curScreen === 'sets' || curScreen === 'home')
+                send('LIST_SETS');
             break;
         case 'LOGIN_OK':
         case 'LOGIN_SUCCESS':
@@ -718,27 +734,81 @@ function drawRooms() {
     });
 }
 
+let setFilter = 'all';
+// bỏ dấu + chữ thường để tìm kiếm tiếng Việt
+const fold = v => String(v == null ? '' : v).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+// Trạng thái bộ của chính mình: [nhãn, lớp màu, nút đổi chế độ, gợi ý của nút]
+const SET_STATE = {
+    PRIVATE: ['Riêng tư', 'priv', 'Gửi duyệt công khai', 'Gửi quản trị viên duyệt để mọi người cùng dùng'],
+    PRIVATE_EVER: ['Đã ẩn', 'priv', 'Bật lại công khai', 'Bộ đã được duyệt trước đó, bật lại không cần chờ duyệt'],
+    PENDING: ['Chờ duyệt', 'play', 'Huỷ yêu cầu', 'Rút yêu cầu công khai, bộ trở về riêng tư'],
+    APPROVED: ['Công khai', 'wait', 'Ẩn khỏi công khai', 'Tạm ẩn, sau đó có thể bật lại ngay không cần duyệt'],
+    REJECTED: ['Bị từ chối', 'bad', 'Gửi duyệt lại', 'Gửi lại nguyên nội dung hiện tại (nên sửa theo lý do trước)']
+};
+const setState = x => SET_STATE[x.trangThai === 'PRIVATE' && x.daTungDuyet ? 'PRIVATE_EVER' : x.trangThai] || SET_STATE.PRIVATE;
+
 function renderSets(list) {
     sets = list;
     const total = list.reduce((a, x) => a + x.soCau, 0);
     $('setSummary').textContent = total + ' câu hỏi · ' + list.length + ' bộ';
+    drawSets();
+}
+
+function drawSets() {
     const box = $('setList');
     box.innerHTML = '';
-    if (!list.length) {
-        box.appendChild(el('p', 'hint', 'Chưa có bộ câu hỏi nào.'));
+    const words = fold($('setSearch').value).split(/\s+/).filter(Boolean);   // khớp mọi từ, không cần đúng thứ tự
+    const rows = sets.filter(x => {
+        if (setFilter === 'mine' && !x.laCuaToi)
+            return false;
+        if (setFilter === 'community' && (x.laCuaToi || x.laHeThong))
+            return false;
+        if (setFilter === 'system' && !x.laHeThong)
+            return false;
+        const hay = fold(x.ten + ' ' + x.tacGia);
+        return words.every(w => hay.includes(w));
+    });
+    if (!rows.length) {
+        box.appendChild(el('p', 'hint', sets.length ? 'Không có bộ câu hỏi khớp bộ lọc.' : 'Chưa có bộ câu hỏi nào.'));
         return;
     }
-    list.forEach((x, i) => {
+    rows.forEach(x => {
+        const i = x.setId % TONES.length;
         const c = el('div', 'setc'), top = el('div', 'rc-top'), ico = el('span', 'rc-ico');
-        ico.style.background = TONES[i % TONES.length][0];
-        ico.style.color = TONES[i % TONES.length][1];
+        ico.style.background = TONES[i][0];
+        ico.style.color = TONES[i][1];
         ico.innerHTML = svgIcon('book', 24);
-        top.append(ico, el('span', 'badge' + (x.laCuaToi ? ' mine' : ''), x.laCuaToi ? 'Của tôi' : 'Hệ thống'));
+        const st = setState(x);
+        top.append(ico, x.laCuaToi ? el('span', 'st ' + st[1], st[0]) : el('span', 'st ' + (x.laHeThong ? 'sys' : 'comm'), x.laHeThong ? 'Hệ thống' : 'Cộng đồng'));
+        const sub = x.laCuaToi ? 'Của bạn' : x.laHeThong ? 'Bộ mẫu của hệ thống' : 'Tác giả: ' + x.tacGia;
+        c.append(top, el('div', 'rc-title', x.ten), el('div', 'rc-sub', sub));
+        if (x.laCuaToi && x.trangThai === 'REJECTED' && x.lyDoTuChoi) {
+            const r = el('div', 'set-reason');
+            r.append(el('b', '', 'Lý do từ chối: '), document.createTextNode(x.lyDoTuChoi));
+            c.appendChild(r);
+        }
         const b = el('button', 'small', 'Tạo phòng với bộ này');
         b.onclick = () => openCreateRoom(x.setId);
         const foot = el('div', 'rc-foot');
         foot.append(el('span', 'rc-count', x.soCau + ' câu hỏi'), b);
-        c.append(top, el('div', 'rc-title', x.ten), foot);
+        c.appendChild(foot);
+        if (x.laCuaToi) {
+            const act = el('div', 'set-actions');
+            const mk = (text, cls, tip, fn) => {
+                const a = el('button', 'link-act' + (cls ? ' ' + cls : ''), text);
+                a.type = 'button';
+                a.title = tip || '';
+                a.onclick = fn;
+                act.appendChild(a);
+            };
+            mk('Sửa', '', 'Sửa nội dung bộ câu hỏi', () => send('GET_SET_DETAIL', {setId: x.setId}));
+            mk(st[2], '', st[3], () => send('TOGGLE_SET_PUBLIC', {setId: x.setId}));
+            mk('Xoá', 'danger', 'Xoá vĩnh viễn bộ câu hỏi', () => {
+                if (window.confirm('Xoá bộ câu hỏi "' + x.ten + '"? Thao tác này không hoàn tác được.'))
+                    send('DELETE_SET', {setId: x.setId});
+            });
+            c.appendChild(act);
+        }
         box.appendChild(c);
     });
 }
@@ -746,6 +816,7 @@ function renderSets(list) {
 // ---------- Trình soạn bộ câu hỏi ----------
 const ICON = {BUTTONS: '◉', CHECKBOXES: '☑', REORDER: '⇅', TYPE_ANSWER: '⌨', RANGE: '↔'};
 let slides = [], cur = 0, dragS = null;
+let editingSetId = null;   // khác null: đang sửa bộ đã lưu (gửi UPDATE_SET thay vì CREATE_SET)
 const blank = t => ({type: t, noiDung: '', thoiGian: '15', anh: '', amThanh: '', ...({BUTTONS: {dung: '', sai: ['', '', '']}, CHECKBOXES: {dung: [''], sai: ['', '']},
                 REORDER: {thuTu: ['', '', '']}, TYPE_ANSWER: {chapNhan: ['']}, RANGE: {min: '0', max: '100', step: '1', dapAn: '', saiSo: '0'}})[t]});
 const T = v => String(v).trim(), F = a => a.map(T).filter(Boolean), N = v => T(v) === '' ? NaN : Number(v);
@@ -783,6 +854,31 @@ function problem(s) {   // null = hợp lệ (Server kiểm tra lại các luậ
             return Math.abs(k - Math.round(k)) > 1e-9 && tol < st / 2 ? 'Đáp án không nằm trên bước nhảy: chỉnh bước hoặc tăng sai số' : null;
         }
     }
+}
+// Dữ liệu dạng trình soạn do Server dựng lại (SET_DETAIL) -> slide trong trình soạn
+function rawToSlide(r) {
+    const t = r.loaiCauHoi, b = blank(t), arr = (v, n) => {
+        const a = Array.isArray(v) ? v.map(String) : [];
+        while (a.length < n)
+            a.push('');
+        return a;
+    };
+    Object.assign(b, {noiDung: r.noiDung || '', thoiGian: String(r.thoiGian || 15), anh: r.anh || '', amThanh: r.amThanh || ''});
+    if (t === 'BUTTONS')
+        Object.assign(b, {dung: (r.dung || [])[0] || '', sai: arr(r.sai, 1)});
+    else if (t === 'CHECKBOXES')
+        Object.assign(b, {dung: arr(r.dung, 1), sai: arr(r.sai, 1)});
+    else if (t === 'REORDER')
+        b.thuTu = arr(r.thuTu, 2);
+    else if (t === 'TYPE_ANSWER')
+        b.chapNhan = arr(r.chapNhan, 1);
+    else if (t === 'RANGE')
+        ['min', 'max', 'step', 'dapAn', 'saiSo'].forEach(k => b[k] = r[k] == null ? '' : String(r[k]));
+    return b;
+}
+function setNotice(text) {
+    $('setNotice').textContent = text || '';
+    $('setNotice').classList.toggle('hidden', !text);
 }
 const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.thoiGian), anh: s.anh, amThanh: s.amThanh, ...({
                 BUTTONS: () => ({dung: [T(s.dung)], sai: F(s.sai)}), CHECKBOXES: () => ({dung: F(s.dung), sai: F(s.sai)}),
@@ -1108,18 +1204,37 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
     });
     $('btnAddSlide').onclick = openPicker;
     $('btnClosePicker').onclick = () => $('typePicker').classList.add('hidden');
+    // Mở bộ đã lưu để sửa (dữ liệu từ SET_DETAIL)
+    function openEditor(d) {
+        editingSetId = d.setId;
+        slides = (d.cauHoi || []).map(rawToSlide);
+        cur = 0;
+        $('setName').value = d.ten || '';
+        $('setPublic').checked = d.trangThai !== 'PRIVATE';
+        setNotice(d.trangThai === 'REJECTED' && d.lyDoTuChoi ? 'Quản trị viên từ chối với lý do: ' + d.lyDoTuChoi + '. Sửa lại rồi bấm Xong để gửi duyệt lại.'
+                : d.trangThai === 'APPROVED' ? 'Bộ này đang công khai. Lưu thay đổi sẽ gỡ công khai cho tới khi được duyệt lại (hoặc để riêng tư nếu bỏ chọn).'
+                : d.trangThai === 'PENDING' ? 'Bộ này đang chờ duyệt. Lưu thay đổi sẽ gửi bản mới để duyệt.' : '');
+        strip();
+        form();
+        show('createSet');
+    }
     $('btnNewSet').onclick = () => {
+        editingSetId = null;
         slides = [];
         cur = 0;
         $('setName').value = '';
+        $('setPublic').checked = false;
+        setNotice('');
         strip();
         form();
         show('createSet');
         openPicker();
     };
     $('btnCancelSet').onclick = () => {
-        if (!slides.length || window.confirm('Bỏ bộ câu hỏi đang soạn?'))
+        if (!slides.length || window.confirm(editingSetId ? 'Bỏ các thay đổi đang sửa?' : 'Bỏ bộ câu hỏi đang soạn?')) {
+            editingSetId = null;
             goSets();
+        }
     };
     $('btnSaveSet').onclick = () => {
         const ten = $('setName').value.trim();
@@ -1138,7 +1253,11 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
                 return toast('Câu ' + (i + 1) + ': ' + p);
             }
         }
-        send('CREATE_SET', {ten, cauHoi: slides.map(payload)});
+        const data = {ten, congKhai: $('setPublic').checked, cauHoi: slides.map(payload)};
+        if (editingSetId)
+            send('UPDATE_SET', Object.assign({setId: editingSetId}, data));
+        else
+            send('CREATE_SET', data);
     };
     function openCreateRoom(preSetId) {
         // Tạo phòng ngay với giá trị mặc định; chủ phòng chỉnh cài đặt ngay trong phòng chờ
@@ -1398,6 +1517,12 @@ const payload = s => ({loaiCauHoi: s.type, noiDung: T(s.noiDung), thoiGian: N(s.
             drawRooms();
         });
     $('roomSearch').oninput = drawRooms;
+    document.querySelectorAll('#setTabs button').forEach(b => b.onclick = () => {
+            setFilter = b.dataset.f;
+            document.querySelectorAll('#setTabs button').forEach(x => x.classList.toggle('on', x === b));
+            drawSets();
+        });
+    $('setSearch').oninput = drawSets;
     $('btnCopyCode').onclick = () => {
         const c = $('roomCode').textContent;
         (navigator.clipboard ? navigator.clipboard.writeText(c) : Promise.reject()).then(() => toast('Đã sao chép mã ' + c), () => toast('Mã phòng: ' + c));

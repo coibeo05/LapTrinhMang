@@ -15,6 +15,7 @@ import java.lang.management.ManagementFactory;
 /**
  * Trang quản trị (admin.html). Xác thực bằng mật khẩu quản trị, KHÔNG dùng tài khoản người chơi.
  * Mọi message ADMIN_* (trừ ADMIN_LOGIN) đều bị từ chối nếu kết nối chưa xác thực.
+ * Duyệt bộ câu hỏi: ADMIN_LIST_SETS, ADMIN_SET_DETAIL, ADMIN_APPROVE_SET, ADMIN_REJECT_SET {lyDo}, ADMIN_REVOKE_SET (xem SetService).
  */
 final class AdminService {
     private AdminService() { }
@@ -44,6 +45,11 @@ final class AdminService {
                 }
                 overview(s);
             }
+            case "ADMIN_LIST_SETS" -> SetService.adminList(s);
+            case "ADMIN_SET_DETAIL" -> SetService.adminDetail(s, p);
+            case "ADMIN_APPROVE_SET" -> SetService.adminReview(s, "APPROVE", p);
+            case "ADMIN_REJECT_SET" -> SetService.adminReview(s, "REJECT", p);
+            case "ADMIN_REVOKE_SET" -> SetService.adminReview(s, "REVOKE", p);
             default -> { }
         }
     }
@@ -92,7 +98,7 @@ final class AdminService {
 
         Runtime rt = Runtime.getRuntime();
         JsonObjectBuilder stats = Json.createObjectBuilder().add("phong", nRooms).add("dangThi", playing)
-                .add("online", online).add("cpu", cpuPercent())
+                .add("online", online).add("cpu", cpuPercent()).add("choDuyet", SetService.pendingCount())
                 .add("pingTB", pingN == 0 ? -1 : Math.round(pingSum / pingN)).add("pingMau", pingN)
                 .add("uptimeGiay", ManagementFactory.getRuntimeMXBean().getUptime() / 1000)
                 .add("boNhoMB", (rt.totalMemory() - rt.freeMemory()) / (1024 * 1024));

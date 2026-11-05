@@ -57,6 +57,22 @@ CREATE TABLE IF NOT EXISTS `ChatMessage` (
     CONSTRAINT `fk_chat_account` FOREIGN KEY (`accountId`) REFERENCES `Account` (`accountId`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 6. Bảng QuestionSet (Bộ câu hỏi do người dùng tạo, câu hỏi lưu dạng JSON)
+--    trangThai: PRIVATE (riêng tư) | PENDING (chờ duyệt) | APPROVED (công khai) | REJECTED (bị từ chối)
+--    daTungDuyet = 1: đã từng được duyệt, chủ sở hữu tạm ẩn rồi bật lại công khai không cần duyệt lại
+CREATE TABLE IF NOT EXISTS `QuestionSet` (
+    `setId` INT AUTO_INCREMENT PRIMARY KEY,
+    `ownerId` INT NOT NULL,
+    `ten` VARCHAR(60) NOT NULL,
+    `cauHoi` MEDIUMTEXT NOT NULL,
+    `ngayTao` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `trangThai` VARCHAR(10) NOT NULL DEFAULT 'PRIVATE',
+    `daTungDuyet` TINYINT(1) NOT NULL DEFAULT 0,
+    `lyDoTuChoi` VARCHAR(200) NULL,
+    `ngayCapNhat` DATETIME NULL,
+    CONSTRAINT `fk_qset_account` FOREIGN KEY (`ownerId`) REFERENCES `Account` (`accountId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- DỮ LIỆU MẪU BAN ĐẦU:
 -- Mật khẩu mặc định '123456' băm theo format salt:sha256(salt + password)
 INSERT INTO `Account` (`username`, `passwordHash`, `tongDiem`, `tongTranThang`)

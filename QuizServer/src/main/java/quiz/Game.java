@@ -25,9 +25,19 @@ public class Game {
     private static final int ME = 1;
     private static final List<Q> BANK = new ArrayList<>();   // câu mẫu, mỗi dạng một câu
 
-    /** Bộ câu hỏi. owner = null là bộ có sẵn của hệ thống; khác null là bộ riêng của người tạo. */
-    record QSet(int setId, String ten, String owner, List<Q> qs) {}
-    private static final List<QSet> SETS = new CopyOnWriteArrayList<>();
+    /**
+     * Bộ câu hỏi. ownerId = 0 là bộ có sẵn của hệ thống; khác 0 là accountId của người tạo.
+     * trangThai/daTungDuyet/lyDoTuChoi: chế độ công khai và kết quả duyệt (xem SetService).
+     */
+    record QSet(int setId, String ten, int ownerId, String tacGia, String trangThai, boolean daTungDuyet,
+                String lyDoTuChoi, List<Q> qs) {
+        boolean system() { return ownerId <= 0; }
+        boolean isPublic() { return SetService.APPROVED.equals(trangThai); }
+        QSet with(String st, boolean ever, String reason) {
+            return new QSet(setId, ten, ownerId, tacGia, st, ever, reason, qs);
+        }
+    }
+    static final List<QSet> SETS = new CopyOnWriteArrayList<>();
     private static final AtomicInteger SET_SEQ = new AtomicInteger(0);
 
     private static JsonArray opts(String... kv) {
@@ -60,47 +70,9 @@ public class Game {
         BANK.add(new Q(5, "RANGE", "Đỉnh Everest cao khoảng bao nhiêu mét?",
                 Json.createObjectBuilder().add("min", 0).add("max", 10000).add("step", 50).build(),
                 Json.createValue(8849), 100));
-        SETS.add(new QSet(SET_SEQ.incrementAndGet(), "Kiến thức chung (mẫu)", null, new ArrayList<>(BANK)));
-        loadSavedSets();   // nạp lại các bộ do người dùng tạo từ CSDL
-    }
-
-    // ---- Bộ câu hỏi riêng được lưu bền trong CSDL (bảng QuestionSet) ----
-    // setId hiển thị = setId trong CSDL + 1, vì số 1 dành cho bộ mẫu của hệ thống.
-    // Chủ sở hữu là accountId (dạng chữ), nên đăng nhập lại hay khởi động lại server vẫn thấy bộ của mình.
-
-    /** Chủ sở hữu bộ riêng của kết nối này, hoặc null nếu chưa đăng nhập. */
-    private static String ownerKey(Conn s) {
-        return s.p == null || s.p.id <= 0 ? null : String.valueOf(s.p.id);
-    }
-
-    static JsonObject qToJson(Q q) {
-        JsonObjectBuilder b = Json.createObjectBuilder()
-                .add("type", q.type()).add("text", q.text())
-                .add("pub", q.pub()).add("key", q.key())
-                .add("tol", q.tol()).add("time", q.time());
-        if (q.image() != null) b.add("image", q.image());
-        if (q.audio() != null) b.add("audio", q.audio());
-        return b.build();
-    }
-
-    static Q qFromJson(JsonObject o, int id) {
-        return new Q(id, o.getString("type"), o.getString("text"), o.getJsonObject("pub"), o.get("key"),
-                o.getJsonNumber("tol").doubleValue(), o.getInt("time"),
-                o.containsKey("image") ? o.getString("image") : null,
-                o.containsKey("audio") ? o.getString("audio") : null);
-    }
-
-    private static void loadSavedSets() {
-        for (quiz.db.QuestionSetDAO.Row r : new quiz.db.QuestionSetDAO().loadAll()) {
-            try (JsonReader jr = Json.createReader(new StringReader(r.cauHoi()))) {
-                JsonArray arr = jr.readArray();
-                List<Q> qs = new ArrayList<>();
-                for (int i = 0; i < arr.size(); i++) qs.add(qFromJson(arr.getJsonObject(i), i + 1));
-                if (!qs.isEmpty()) SETS.add(new QSet(r.setId() + 1, r.ten(), String.valueOf(r.ownerId()), qs));
-            } catch (RuntimeException e) {
-                System.err.println("Bỏ qua bộ câu hỏi #" + r.setId() + " bị hỏng: " + e.getMessage());
-            }
-        }
+        SETS.add(new QSet(SET_SEQ.incrementAndGet(), "Kiến thức chung (mẫu)", 0, "Hệ thống",
+                SetService.APPROVED, true, null, new ArrayList<>(BANK)));
+        SetService.loadSaved();   // nạp lại các bộ do người dùng tạo từ CSDL
     }
 
     private static final AtomicInteger IDS = new AtomicInteger(0);
@@ -140,8 +112,8 @@ public class Game {
                 case "GET_HISTORY" -> getHistory(s);
                 case "GET_RANKING" -> getRanking(s, me);
                 case "LOGOUT" -> logout(s);
-                case "LIST_SETS" -> sendSets(s);
-                case "CREATE_SET" -> createSet(s, p);
+                case "LIST_SETS", "CREATE_SET", "UPDATE_SET", "GET_SET_DETAIL", "TOGGLE_SET_PUBLIC", "DELETE_SET" ->
+                        SetService.handle(type, p, s);
                 case "LIST_ROOMS" -> send(s, "ROOM_LIST", Json.createObjectBuilder().add("rooms", Room.list()));
                 case "CREATE_ROOM" -> createRoom(s, me, p);
                 case "JOIN_ROOM" -> {
@@ -226,7 +198,7 @@ public class Game {
         QSet newSet = null;
         if (p.containsKey("setId")) {
             int setId = p.getInt("setId", -1);
-            newSet = SETS.stream().filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(ownerKey(s)))).findFirst().orElse(null);
+            newSet = SetService.usable(setId, s);
             if (newSet == null) { error(s, "Bộ câu hỏi không tồn tại"); return; }
         }
         String err = r.configure(me, p, newSet);
@@ -426,7 +398,7 @@ public class Game {
         return u;
     }
 
-    private static Q build(JsonObject o, int id) {
+    static Q build(JsonObject o, int id) {
         String type = o.getString("loaiCauHoi", ""), text = clean(o.getString("noiDung", ""), 200);
         if (text.isEmpty()) throw bad("Chưa nhập nội dung câu hỏi");
         double tg = num(o, "thoiGian");
@@ -490,49 +462,10 @@ public class Game {
         return new Q(id, type, text, pub.build(), key, tol, (int) tg, image, audio);
     }
 
-    private void sendSets(Conn s) {
-        JsonArrayBuilder a = Json.createArrayBuilder();
-        for (QSet x : SETS) {
-            if (x.owner() != null && !x.owner().equals(ownerKey(s))) continue;   // bộ riêng chỉ chủ sở hữu thấy
-            a.add(Json.createObjectBuilder().add("setId", x.setId()).add("ten", x.ten())
-                    .add("soCau", x.qs().size()).add("laCuaToi", x.owner() != null));
-        }
-        send(s, "SET_LIST", Json.createObjectBuilder().add("sets", a));
-    }
-
-    private void createSet(Conn s, JsonObject p) {
-        String ten = p.getString("ten", "").trim();
-        JsonValue lv = p.get("cauHoi");
-        JsonArray list = lv instanceof JsonArray arr ? arr : JsonValue.EMPTY_JSON_ARRAY;
-        if (ten.isEmpty() || ten.length() > 60) { error(s, "Tên bộ câu hỏi không hợp lệ (1-60 ký tự)"); return; }
-        if (list.size() > 50) { error(s, "Tối đa 50 câu mỗi bộ"); return; }
-        List<Q> qs = new ArrayList<>();
-        for (int i = 0; i < list.size(); i++) {
-            try {
-                if (!(list.get(i) instanceof JsonObject o)) throw bad("Dữ liệu không hợp lệ");
-                qs.add(build(o, i + 1));
-            } catch (IllegalArgumentException e) {
-                error(s, "Câu " + (i + 1) + ": " + e.getMessage());
-                return;
-            }
-        }
-        if (qs.isEmpty()) { error(s, "Bộ câu hỏi cần ít nhất 1 câu"); return; }
-        String owner = ownerKey(s);
-        if (owner == null) { error(s, "Bạn cần đăng nhập để tạo bộ câu hỏi"); return; }
-        JsonArrayBuilder saved = Json.createArrayBuilder();
-        for (Q q : qs) saved.add(qToJson(q));
-        int dbId = new quiz.db.QuestionSetDAO().insert(s.p.id, ten, saved.build().toString());
-        if (dbId <= 0) { error(s, "Không lưu được bộ câu hỏi vào cơ sở dữ liệu, hãy thử lại"); return; }
-        SETS.add(new QSet(dbId + 1, ten, owner, qs));
-        send(s, "SET_CREATED", Json.createObjectBuilder().add("ten", ten));
-    }
-
     private void createRoom(Conn s, Player me, JsonObject p) {
         if (me.room != null) return;
         int setId = p.getInt("setId", -1);
-        QSet set = SETS.stream()
-                .filter(x -> x.setId() == setId && (x.owner() == null || x.owner().equals(ownerKey(s))))
-                .findFirst().orElse(null);
+        QSet set = SetService.usable(setId, s);
         if (set == null) { error(s, "Bộ câu hỏi không tồn tại"); return; }
         String ten = p.getString("ten", "").trim();
         if (ten.isEmpty()) ten = "Phòng của " + me.ten;

@@ -6,7 +6,7 @@
         <title>QUIZ - Vòng chơi</title>
         <link rel="icon" type="image/png" href="img/favicon.png">
         <link rel="stylesheet" href="css/style.css?v=13">
-        <link rel="stylesheet" href="css/figma.css?v=4">
+        <link rel="stylesheet" href="css/figma.css?v=5">
     </head>
     <body>
         <header>
@@ -117,9 +117,19 @@
                 <div class="page-head">
                     <div>
                         <h1>Bộ câu hỏi</h1>
-                        <p class="muted">Chọn một bộ để tạo phòng, hoặc tự soạn bộ câu hỏi riêng của bạn.</p>
+                        <p class="muted">Bộ mẫu của hệ thống, bộ cộng đồng chia sẻ và bộ riêng của bạn. Bộ của bạn có thể gửi duyệt để công khai cho mọi người.</p>
                     </div>
                     <button id="btnNewSet" class="cta" type="button"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Tạo bộ câu hỏi</button>
+                </div>
+                <div class="rooms-head">
+                    <div class="chips" id="setTabs">
+                        <button type="button" data-f="all" class="on">Tất cả</button>
+                        <button type="button" data-f="mine">Của tôi</button>
+                        <button type="button" data-f="community">Cộng đồng</button>
+                        <button type="button" data-f="system">Hệ thống</button>
+                    </div>
+                    <span class="grow"></span>
+                    <label class="search-box"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input type="search" id="setSearch" placeholder="Tìm bộ câu hỏi hoặc tác giả"></label>
                 </div>
                 <div id="setList" class="set-grid"></div>
             </section>
@@ -149,8 +159,12 @@
                 <div class="qe-top">
                     <button id="btnSaveSet" class="qe-done">Xong</button>
                     <input type="text" id="setName" class="qe-name" maxlength="60" placeholder="Tên bộ câu hỏi (ví dụ: Ôn tập Lập trình mạng)">
+                    <label class="qe-pub" title="Quản trị viên duyệt xong thì mọi người đều thấy và tạo phòng được với bộ này">
+                        <input type="checkbox" id="setPublic"> Gửi duyệt công khai
+                    </label>
                     <button id="btnCancelSet" class="qe-cancel">Hủy</button>
                 </div>
+                <div id="setNotice" class="qe-notice hidden"></div>
                 <div class="qe-main" id="qeMain"></div>
                 <div class="qe-strip">
                     <div id="slides"></div>
@@ -338,6 +352,6 @@
         </div>
         <div id="toast" class="hidden"></div>
         <script src="https://accounts.google.com/gsi/client" async defer></script>
-        <script src="js/app.js?v=17"></script>
+        <script src="js/app.js?v=18"></script>
     </body>
 </html>

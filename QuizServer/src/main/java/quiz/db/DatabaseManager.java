@@ -17,14 +17,18 @@ public class DatabaseManager {
     private static String dbName = "quiz_game";
     private static String dbUser = "root";
     private static String dbPass = "";
+    /** true khi đã tạo xong database/bảng/cột. Nếu lúc khởi động MySQL chưa bật thì lần kết nối sau sẽ thử lại. */
+    private static volatile boolean schemaReady;
 
     static {
         loadConfig();
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
-            initDatabaseAndTables();
         } catch (ClassNotFoundException e) {
             System.err.println("Lỗi nạp Driver MySQL (com.mysql.cj.jdbc.Driver): " + e.getMessage());
+        }
+        try {
+            ensureSchema();
         } catch (SQLException e) {
             System.err.println("------------------------------------------------------------------");
             System.err.println("LỖI KẾT NỐI MYSQL: " + e.getMessage());
@@ -61,8 +65,21 @@ public class DatabaseManager {
         return "jdbc:mysql://" + dbHost + ":" + dbPort + "/" + dbName + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Ho_Chi_Minh&characterEncoding=UTF-8";
     }
 
+    /** Kết nối dùng cho DAO. Lần đầu kết nối được sau khi MySQL bật muộn sẽ tạo bảng/cột còn thiếu trước. */
     public static Connection getConnection() throws SQLException {
+        if (!schemaReady) ensureSchema();
+        return rawConnection();
+    }
+
+    private static Connection rawConnection() throws SQLException {
         return DriverManager.getConnection(getDbUrl(), dbUser, dbPass);
+    }
+
+    /** Có thể gọi nhiều lần, chỉ chạy tới khi thành công một lần. */
+    public static synchronized void ensureSchema() throws SQLException {
+        if (schemaReady) return;
+        initDatabaseAndTables();
+        schemaReady = true;
     }
 
     /** Kiểm tra nhanh CSDL có dùng được không (MySQL đã bật, đúng tài khoản/mật khẩu). Dùng để báo lỗi đúng chỗ. */
@@ -75,6 +92,15 @@ public class DatabaseManager {
         }
     }
 
+    /** Thêm cột nếu chưa có (bỏ qua mã lỗi MySQL 1060: cột đã tồn tại). */
+    private static void addColumn(Statement st, String table, String columnDef) throws SQLException {
+        try {
+            st.execute("ALTER TABLE `" + table + "` ADD COLUMN " + columnDef);
+        } catch (SQLException e) {
+            if (e.getErrorCode() != 1060) throw e;
+        }
+    }
+
     /** Tự động tạo Database nếu chưa có và khởi tạo 5 bảng theo Mục 3.4 */
     private static void initDatabaseAndTables() throws SQLException {
         // 1. Tạo Database nếu chưa tồn tại
@@ -84,7 +110,7 @@ public class DatabaseManager {
         }
 
         // 2. Tạo 5 bảng theo lược đồ CSDL mục 3.4 trong tài liệu
-        try (Connection conn = getConnection(); Statement st = conn.createStatement()) {
+        try (Connection conn = rawConnection(); Statement st = conn.createStatement()) {
             // Bảng 1: Account
             st.execute("""
                 CREATE TABLE IF NOT EXISTS `Account` (
@@ -164,6 +190,14 @@ public class DatabaseManager {
                     FOREIGN KEY (`ownerId`) REFERENCES `Account` (`accountId`) ON DELETE CASCADE
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
             """);
+
+            // Chế độ công khai và duyệt của bộ câu hỏi. Bộ tạo trước khi có các cột này mặc định là riêng tư.
+            // trangThai: PRIVATE (riêng tư) | PENDING (chờ duyệt) | APPROVED (công khai) | REJECTED (bị từ chối)
+            // daTungDuyet = 1: đã từng được duyệt, chủ sở hữu tạm ẩn rồi bật lại công khai thì không cần duyệt lại
+            addColumn(st, "QuestionSet", "`trangThai` VARCHAR(10) NOT NULL DEFAULT 'PRIVATE'");
+            addColumn(st, "QuestionSet", "`daTungDuyet` TINYINT(1) NOT NULL DEFAULT 0");
+            addColumn(st, "QuestionSet", "`lyDoTuChoi` VARCHAR(200) NULL");
+            addColumn(st, "QuestionSet", "`ngayCapNhat` DATETIME NULL");
 
             System.out.println("CSDL MySQL [" + dbName + "] đã sẵn sàng tại " + dbHost + ":" + dbPort);
         }

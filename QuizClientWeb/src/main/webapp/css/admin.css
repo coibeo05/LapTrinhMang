@@ -423,14 +423,20 @@ tr:last-child td{
     font-size:14px
 }
 
-/* Tab: Tổng quan (tất cả) / Phòng chơi / Người chơi / Nhật ký */
-main[data-view="rooms"] .cols,main[data-view="players"] .cols,main[data-view="logs"] .cols{
+/* Tab: Tổng quan / Phòng chơi / Người chơi / Duyệt bộ câu hỏi / Nhật ký. Bảng duyệt chỉ hiện ở tab riêng. */
+main[data-view="rooms"] .cols,main[data-view="players"] .cols,main[data-view="sets"] .cols,main[data-view="logs"] .cols{
     grid-template-columns:1fr
+}
+main:not([data-view="sets"]) #sec-sets{
+    display:none
 }
 main[data-view="rooms"] #sec-players,main[data-view="rooms"] #sec-logs{
     display:none
 }
 main[data-view="players"] #sec-rooms,main[data-view="players"] #sec-logs{
+    display:none
+}
+main[data-view="sets"] #sec-rooms,main[data-view="sets"] #sec-players,main[data-view="sets"] #sec-logs{
     display:none
 }
 main[data-view="logs"] .col-main{
@@ -460,4 +466,184 @@ main:not([data-view="overview"]) .head{
     main{
         padding:18px 14px 40px
     }
+}
+
+/* ---- Duyệt bộ câu hỏi ---- */
+.nav-badge{
+    display:inline-block;
+    min-width:20px;
+    margin-left:4px;
+    padding:1px 6px;
+    border-radius:999px;
+    background:var(--red);
+    color:#fff;
+    font-size:11px;
+    font-weight:700;
+    text-align:center
+}
+button.stat-link{
+    text-align:left;
+    font:inherit;
+    color:inherit;
+    cursor:pointer;
+    background:var(--paper)
+}
+button.stat-link:hover:not(:disabled){
+    background:#fff;
+    border-color:var(--gold)
+}
+button.stat-link b{
+    color:var(--orange)
+}
+.chips{
+    display:flex;
+    gap:6px;
+    flex-wrap:wrap
+}
+.chips button{
+    background:#fff;
+    color:#5a3d24;
+    border:1px solid var(--line);
+    padding:6px 12px;
+    font-size:13px;
+    font-weight:600
+}
+.chips button:hover:not(:disabled){
+    background:#fff;
+    border-color:var(--gold)
+}
+.chips button.on,.chips button.on:hover:not(:disabled){
+    background:var(--teal-bg);
+    border-color:#cfe8e2;
+    color:#1f6b5b
+}
+button.sm.ok{
+    background:var(--teal-bg);
+    color:#1f6b5b
+}
+button.sm.ok:hover:not(:disabled){
+    background:#cfe8e2
+}
+
+.modal-card{
+    width:100%;
+    max-width:760px;
+    max-height:88vh;
+    display:flex;
+    flex-direction:column;
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:18px;
+    box-shadow:0 18px 50px rgba(68,43,21,.3);
+    overflow:hidden
+}
+.modal-head{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:12px;
+    padding:18px 22px;
+    border-bottom:1px solid var(--line)
+}
+.modal-head h2{
+    margin:0;
+    font-size:20px;
+    color:var(--brown);
+    overflow-wrap:anywhere
+}
+button.close-x{
+    background:transparent;
+    color:var(--muted);
+    font-size:26px;
+    line-height:1;
+    padding:0 6px
+}
+button.close-x:hover:not(:disabled){
+    background:transparent;
+    color:var(--brown)
+}
+.modal-body{
+    flex:1;
+    overflow-y:auto;
+    padding:16px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:12px
+}
+.mq{
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:12px 16px;
+    background:#fff
+}
+.mq-top{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    font-size:13px;
+    color:var(--orange)
+}
+.mq-type{
+    padding:2px 8px;
+    border-radius:6px;
+    background:#efe6da;
+    color:#5a3d24;
+    font-size:12px;
+    font-weight:600
+}
+.mq-text{
+    margin:8px 0;
+    font-weight:600;
+    color:var(--brown);
+    overflow-wrap:anywhere
+}
+.mq-img{
+    display:block;
+    max-width:100%;
+    max-height:220px;
+    border-radius:10px;
+    margin-bottom:8px
+}
+.mq-audio{
+    display:block;
+    width:100%;
+    margin-bottom:8px
+}
+.mq-opts{
+    margin:0;
+    padding-left:20px;
+    font-size:13px;
+    line-height:1.7;
+    color:#5a3d24
+}
+.mq-opts li.ok{
+    color:#1f6b5b;
+    font-weight:700
+}
+.modal-review{
+    border-top:1px solid var(--line);
+    padding:14px 22px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    background:#fbf6ee
+}
+.modal-review textarea{
+    width:100%;
+    resize:vertical;
+    padding:8px 12px;
+    font:inherit;
+    font-size:14px;
+    border:2px solid var(--line);
+    border-radius:10px;
+    background:#fff
+}
+.modal-review textarea:focus{
+    outline:0;
+    border-color:var(--gold)
+}
+.modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:10px
 }

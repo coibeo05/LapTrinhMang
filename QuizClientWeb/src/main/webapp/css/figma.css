@@ -1551,3 +1551,101 @@ button.slot-box:hover:not(:disabled){
         padding: 24px 20px;
     }
 }
+
+/* ---- Bộ câu hỏi: trạng thái công khai / duyệt ---- */
+.st.priv{
+    background:#f1ece4;
+    color:#6b5a47
+}
+.st.bad{
+    background:#fde4e4;
+    color:#b3261e
+}
+.st.sys{
+    background:#efe6da;
+    color:var(--brown)
+}
+.st.comm{
+    background:#e6eefb;
+    color:#2d5aa8
+}
+.set-reason{
+    margin-top:12px;
+    padding:10px 14px;
+    border-radius:12px;
+    background:#fff4ec;
+    border:1px solid #f3d2b8;
+    color:#8f3b0e;
+    font-size:13px;
+    line-height:1.45;
+    overflow-wrap:anywhere
+}
+.set-actions{
+    display:flex;
+    gap:4px;
+    flex-wrap:wrap;
+    margin-top:14px;
+    padding-top:12px;
+    border-top:1px dashed var(--line)
+}
+button.link-act{
+    background:transparent!important;
+    color:var(--teal-d)!important;
+    border:0;
+    padding:6px 10px;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:700;
+    box-shadow:none
+}
+button.link-act:hover{
+    background:var(--teal-bg)!important
+}
+button.link-act.danger{
+    color:#b3261e!important;
+    margin-left:auto
+}
+button.link-act.danger:hover{
+    background:#fde4e4!important
+}
+.qe-pub{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-size:14px;
+    font-weight:600;
+    color:var(--brown);
+    white-space:nowrap;
+    cursor:pointer;
+    user-select:none
+}
+.qe-pub input{
+    width:17px;
+    height:17px;
+    margin:0;
+    accent-color:var(--teal-d);
+    cursor:pointer
+}
+.qe-notice{
+    margin:10px 14px 0;
+    padding:10px 16px;
+    border-radius:12px;
+    background:#fff4ec;
+    border:1px solid #f3d2b8;
+    color:#8f3b0e;
+    font-size:14px;
+    line-height:1.45
+}
+.qe-notice.hidden{
+    display:none
+}
+@media (max-width:640px){
+    .qe-top{
+        flex-wrap:wrap
+    }
+    .editor .qe-name{
+        order:5;
+        flex:1 1 100%;
+        max-width:none
+    }
+}

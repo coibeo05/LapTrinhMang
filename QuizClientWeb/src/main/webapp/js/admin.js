@@ -4,6 +4,8 @@
 // Gói tin: ADMIN_LOGIN {password} -> ADMIN_OK | ADMIN_FAIL {thongBao}
 //          ADMIN_OVERVIEW -> ADMIN_DATA {stats, rooms, players, logs}
 //          ADMIN_CLOSE_ROOM {roomId} | ADMIN_KICK_ROOM {accountId} | ADMIN_DISCONNECT {accountId} -> ADMIN_DATA mới
+// Duyệt bộ câu hỏi: ADMIN_LIST_SETS -> ADMIN_SETS {sets} | ADMIN_SET_DETAIL {setId} -> ADMIN_SET_DETAIL {.., cauHoi}
+//          ADMIN_APPROVE_SET {setId} | ADMIN_REJECT_SET {setId, lyDo} | ADMIN_REVOKE_SET {setId} -> ADMIN_NOTICE + ADMIN_SETS
 // Mọi dữ liệu hiển thị đều đi qua textContent (tên người chơi / tên phòng do người dùng tự đặt, không được chèn HTML).
 
 const POLL_MS = 2000;
@@ -22,6 +24,8 @@ const norm = s => String(s == null ? '' : s).toLowerCase().normalize('NFD').repl
 let ws = null, authed = false, pw = '', pendingPw = '';
 let pollT = null, reconnT = null, reconnTries = 0, toastT = null;
 let data = {stats: {}, rooms: [], players: [], logs: []};
+let qsets = [], setFilter = 'PENDING', modalSet = null;
+const view = () => $('dash').dataset.view;
 
 // ---------- Kết nối ----------
 function connect() {
@@ -123,8 +127,11 @@ function stopPoll() {
 }
 
 function request() {
-    if (authed)
-        send('ADMIN_OVERVIEW');
+    if (!authed)
+        return;
+    send('ADMIN_OVERVIEW');
+    if (view() === 'sets')
+        send('ADMIN_LIST_SETS');   // danh sách bộ chỉ tải khi đang mở trang duyệt
 }
 
 // ---------- Xử lý gói tin ----------
@@ -155,6 +162,17 @@ function handle(m) {
                 players: p.players || [], logs: p.logs || []
             };
             render();
+            break;
+        case 'ADMIN_SETS':
+            qsets = p.sets || [];
+            renderSets();
+            break;
+        case 'ADMIN_SET_DETAIL':
+            openSetModal(p);
+            break;
+        case 'ADMIN_NOTICE':
+            toast(p.thongBao || 'Đã cập nhật');
+            closeSetModal();
             break;
         case 'ERROR':
             if (!authed)
@@ -197,6 +215,11 @@ function renderStats() {
         $('stPing').textContent = s.pingTB + ' ms';
         $('stPingSub').textContent = 'Đo từ ' + (s.pingMau || 0) + ' người chơi';
     }
+    const n = s.choDuyet || 0;
+    $('stPending').textContent = n;
+    $('tabPending').textContent = n;
+    $('navPending').textContent = n;
+    $('navPending').classList.toggle('hidden', n === 0);
 }
 
 function emptyRow(cols, text) {
@@ -283,6 +306,119 @@ function renderPlayers() {
     });
 }
 
+// ---------- Duyệt bộ câu hỏi ----------
+const SET_PILL = {PENDING: ['play', 'Chờ duyệt'], APPROVED: ['ok', 'Đang công khai'], REJECTED: ['bad', 'Bị từ chối'], PRIVATE: ['', 'Riêng tư']};
+const TYPE_NAME = {BUTTONS: 'Chọn 1 đáp án', CHECKBOXES: 'Chọn nhiều đáp án', REORDER: 'Sắp xếp', TYPE_ANSWER: 'Nhập đáp án', RANGE: 'Khoảng số'};
+
+function setPill(x) {
+    const st = x.trangThai === 'PRIVATE' && x.daTungDuyet ? ['', 'Đã ẩn (từng duyệt)'] : (SET_PILL[x.trangThai] || SET_PILL.PRIVATE);
+    return el('span', 'pill ' + st[0], st[1]);
+}
+
+function renderSets() {
+    const q = norm($('setQ').value.trim());
+    const tb = $('setTable').querySelector('tbody');
+    tb.textContent = '';
+    const rows = qsets.filter(x => (setFilter === 'all' || x.trangThai === setFilter) && (!q || norm(x.ten + ' ' + x.tacGia).includes(q)));
+    if (!rows.length) {
+        tb.appendChild(emptyRow(5, setFilter === 'PENDING' && !q ? 'Không có bộ nào đang chờ duyệt' : 'Không có bộ câu hỏi nào khớp'));
+        return;
+    }
+    rows.forEach(x => {
+        const tr = el('tr');
+        const c1 = el('td');
+        c1.append(el('div', 'cell-main', x.ten), el('div', 'cell-sub', 'Mã bộ #' + x.setId));
+        const c4 = el('td');
+        c4.appendChild(setPill(x));
+        if (x.trangThai === 'REJECTED' && x.lyDoTuChoi)
+            c4.appendChild(el('div', 'cell-sub', x.lyDoTuChoi));
+        const c5 = el('td', 'act');
+        const btn = (text, cls, fn) => {
+            const b = el('button', 'sm ' + cls, text);
+            b.type = 'button';
+            b.onclick = fn;
+            c5.appendChild(b);
+        };
+        btn('Xem', 'ghost', () => send('ADMIN_SET_DETAIL', {setId: x.setId}));
+        if (x.trangThai === 'PENDING')
+            btn('Duyệt', 'ok', () => {
+                if (window.confirm('Duyệt công khai "' + x.ten + '" của ' + x.tacGia + '? Mọi người chơi sẽ thấy và dùng được bộ này.'))
+                    send('ADMIN_APPROVE_SET', {setId: x.setId});
+            });
+        if (x.trangThai === 'APPROVED')
+            btn('Gỡ công khai', 'warn', () => {
+                if (window.confirm('Gỡ công khai "' + x.ten + '"? Người tạo phải gửi duyệt lại nếu muốn công khai.'))
+                    send('ADMIN_REVOKE_SET', {setId: x.setId});
+            });
+        tr.append(c1, el('td', '', x.tacGia), el('td', '', x.soCau), c4, c5);
+        tb.appendChild(tr);
+    });
+}
+
+// Một câu hỏi dạng trình soạn (Server dựng lại): hiện rõ đáp án đúng/sai để duyệt
+function questionCard(q, i) {
+    const card = el('div', 'mq');
+    const top = el('div', 'mq-top');
+    top.append(el('b', '', 'Câu ' + (i + 1)), el('span', 'mq-type', TYPE_NAME[q.loaiCauHoi] || q.loaiCauHoi), el('span', 'cell-sub', q.thoiGian + ' giây'));
+    card.append(top, el('div', 'mq-text', q.noiDung));
+    if (q.anh) {
+        const img = el('img', 'mq-img');
+        img.src = q.anh;
+        img.alt = 'Ảnh câu ' + (i + 1);
+        img.loading = 'lazy';
+        card.appendChild(img);
+    }
+    if (q.amThanh) {
+        const au = el('audio', 'mq-audio');
+        au.controls = true;
+        au.preload = 'none';
+        au.src = q.amThanh;
+        card.appendChild(au);
+    }
+    const ul = el(q.loaiCauHoi === 'REORDER' ? 'ol' : 'ul', 'mq-opts');
+    const li = (text, ok) => ul.appendChild(el('li', ok ? 'ok' : '', text));
+    switch (q.loaiCauHoi) {
+        case 'BUTTONS':
+        case 'CHECKBOXES':
+            (q.dung || []).forEach(t => li('Đúng: ' + t, true));
+            (q.sai || []).forEach(t => li('Sai: ' + t, false));
+            break;
+        case 'REORDER':
+            (q.thuTu || []).forEach(t => li(t, true));
+            break;
+        case 'TYPE_ANSWER':
+            li('Chấp nhận: ' + (q.chapNhan || []).join(' | '), true);
+            break;
+        case 'RANGE':
+            li('Đáp án: ' + q.dapAn + (q.saiSo ? ' (sai số ±' + q.saiSo + ')' : ''), true);
+            li('Khoảng ' + q.min + ' đến ' + q.max + ', bước ' + q.step, false);
+            break;
+    }
+    card.appendChild(ul);
+    return card;
+}
+
+function openSetModal(d) {
+    modalSet = d;
+    $('mTitle').textContent = d.ten;
+    const pill = SET_PILL[d.trangThai] || SET_PILL.PRIVATE;
+    $('mMeta').textContent = 'Tác giả: ' + d.tacGia + ' · ' + (d.cauHoi || []).length + ' câu · ' + pill[1];
+    const body = $('mBody');
+    body.textContent = '';
+    (d.cauHoi || []).forEach((q, i) => body.appendChild(questionCard(q, i)));
+    $('mReview').classList.toggle('hidden', d.trangThai !== 'PENDING');
+    $('mRevokeRow').classList.toggle('hidden', d.trangThai !== 'APPROVED');
+    $('mReason').value = '';
+    $('setModal').classList.remove('hidden');
+    body.scrollTop = 0;
+}
+
+function closeSetModal() {
+    modalSet = null;
+    $('setModal').classList.add('hidden');
+    $('setModal').querySelectorAll('audio').forEach(a => a.pause());
+}
+
 function renderLogs() {
     const ul = $('logList');
     ul.textContent = '';
@@ -301,6 +437,8 @@ function renderLogs() {
 function setView(v) {
     $('dash').dataset.view = v;
     document.querySelectorAll('.top nav a').forEach(a => a.classList.toggle('on', a.dataset.view === v));
+    if (v === 'sets')
+        request();
 }
 
 document.querySelectorAll('.top nav a').forEach(a => {
@@ -327,6 +465,40 @@ $('btnLogout').onclick = () => {
     showLogin('');   // onclose tự nối lại bằng kết nối mới, chưa xác thực
 };
 $('roomQ').oninput = renderRooms;
+$('setQ').oninput = renderSets;
+$('stPendingCard').onclick = () => setView('sets');
+document.querySelectorAll('#setTabs button').forEach(b => b.onclick = () => {
+    setFilter = b.dataset.f;
+    document.querySelectorAll('#setTabs button').forEach(x => x.classList.toggle('on', x === b));
+    renderSets();
+});
+$('mClose').onclick = closeSetModal;
+$('setModal').onclick = e => {
+    if (e.target === $('setModal'))
+        closeSetModal();
+};
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && modalSet)
+        closeSetModal();
+});
+$('mApprove').onclick = () => {
+    if (modalSet)
+        send('ADMIN_APPROVE_SET', {setId: modalSet.setId});
+};
+$('mReject').onclick = () => {
+    if (!modalSet)
+        return;
+    const lyDo = $('mReason').value.trim();
+    if (!lyDo) {
+        $('mReason').focus();
+        return toast('Hãy nhập lý do từ chối');
+    }
+    send('ADMIN_REJECT_SET', {setId: modalSet.setId, lyDo});
+};
+$('mRevoke').onclick = () => {
+    if (modalSet && window.confirm('Gỡ công khai "' + modalSet.ten + '"?'))
+        send('ADMIN_REVOKE_SET', {setId: modalSet.setId});
+};
 $('playerQ').oninput = renderPlayers;
 
 setStatus(false);
